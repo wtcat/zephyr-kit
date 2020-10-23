@@ -1,0 +1,14 @@
+menuconfig LCD
+	bool "LCD Drivers"
+	help
+	  Enable options for LCD driver.
+
+if LCD
+comment "LCD Drivers"
+
+config LCD_APOLLO3P
+	bool "RM6903 for APOLLO3P driver"
+	help
+	  This option enables the LCD driver for APOLLO3P
+	  
+endif # LCD
