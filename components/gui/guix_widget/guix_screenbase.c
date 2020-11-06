@@ -54,7 +54,7 @@ VOID guix_screen_slide_list_start(GUIX_SLIDE_LIST *handle, GX_WIDGET *parent,
     GX_ANIMATION_INFO *anim_info = handle->anim_info;
     GX_WIDGET *widget = list[0];
     INT idx = 0;
-    INT idx_1;
+    INT idx_1 = 0;
     INT idx_2;
     INT width;
     INT sign;

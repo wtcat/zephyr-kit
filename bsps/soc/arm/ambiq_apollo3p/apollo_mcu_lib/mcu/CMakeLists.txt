@@ -24,6 +24,8 @@ foreach(ambiq_soc ${ambiq_socs})
 		    ${ambiq_soc}/regs
 		    ${ambiq_soc}/hal
 		)
+		
+		zephyr_compile_definitions(-DAM_PART_${soc_to_upper})
 
 		add_subdirectory(${ambiq_soc})
 	endif()

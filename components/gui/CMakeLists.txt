@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.8)
 
-zephyr_library()
+zephyr_library_named(guix)
+if (CONFIG_GUIX_USER_MODE)
+  zephyr_library_app_memory(guix_partition)
+endif()
 
 zephyr_include_directories(
     gui/common/inc

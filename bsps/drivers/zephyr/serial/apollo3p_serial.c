@@ -133,6 +133,8 @@ static int apollo3p_uart_set_baudrate(volatile struct uart_regs *reg,
 	case CLK_3MHZ:
 		clk = 3000000;
 		break;
+        default:
+               return -EINVAL;
 	}
 
 	temp = 16 * baudrate;

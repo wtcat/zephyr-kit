@@ -1,10 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-#include <posix/pthread.h>
 
 #include <kernel.h>
-
+#include <app_memory/app_memdomain.h>
+#include <app_memory/mem_domain.h>
+ 
 #include "gx_api.h"
 #include "gx_widget.h"
 #include "gx_system.h"
@@ -13,11 +14,18 @@
 #include "base/observer.h"
 #include "base/list.h"
 
-#if defined(CONFIG_FPU_SHARING)
-#define GUIX_THREAD_OPTIONS (K_ESSENTIAL | K_FP_REGS)
+#ifdef CONFIG_GUIX_USER_MODE
+#define GUI_OPTIONS K_USER
 #else
-#define GUIX_THREAD_OPTIONS K_ESSENTIAL
+#define GUI_OPTIONS K_ESSENTIAL 
 #endif
+
+#if defined(CONFIG_FPU_SHARING)
+#define GUIX_THREAD_OPTIONS (GUI_OPTIONS | K_FP_REGS)
+#else
+#define GUIX_THREAD_OPTIONS GUI_OPTIONS
+#endif
+
 
 struct guix_event {
     struct list_head node;
@@ -40,7 +48,13 @@ struct guix_struct {
 };
 
 
-static K_KERNEL_STACK_DEFINE(guix_stack, CONFIG_GUIX_THREAD_STACK_SIZE);
+#ifdef CONFIG_GUIX_USER_MODE
+K_APPMEM_PARTITION_DEFINE(guix_partition);
+static struct k_mem_domain guix_mem_domain;
+#endif
+
+
+static K_THREAD_STACK_DEFINE(guix_stack, CONFIG_GUIX_THREAD_STACK_SIZE);
 static struct k_thread guix_thread;
     
 static K_MUTEX_DEFINE(guix_lock);
@@ -206,6 +220,11 @@ UINT gx_generic_thread_start(VOID(*guix_thread_entry)(ULONG))
                               CONFIG_GUIX_THREAD_PRIORITY, GUIX_THREAD_OPTIONS,
                               K_FOREVER);
 
+#ifdef CONFIG_GUIX_USER_MODE
+    struct k_mem_partition *parts[] = {&guix_partition};
+    k_mem_domain_init(&guix_mem_domain, 1, parts);
+    k_mem_domain_add_thread(&guix_mem_domain, thread);
+#endif
     k_thread_name_set(thread, "GUIX-THREAD");
     gx->entry = guix_thread_entry;
     k_thread_start(thread);

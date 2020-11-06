@@ -143,10 +143,10 @@ exit:
 static int i2c_apollo3p_transfer(const struct device *dev, struct i2c_msg *msgs,
     uint8_t num_msgs, uint16_t addr)
 {
-	struct i2c_apollo3p_data *data = dev->data;
+    struct i2c_apollo3p_data *data = dev->data;
     am_hal_iom_transfer_t xfer;
     uint8_t index;
-	int ret;
+    int ret = -EINVAL;
 
     k_mutex_lock(&data->mutex, K_FOREVER);
     xfer.bContinue = false;
@@ -209,11 +209,11 @@ static int i2c_apollo3p_transfer(const struct device *dev, struct i2c_msg *msgs,
 static int i2c_apollo3p_transfer_compatible(const struct device *dev, 
     struct i2c_msg *msgs, uint8_t num_msgs, uint16_t addr)
 {
-	struct i2c_apollo3p_data *data = dev->data;
+    struct i2c_apollo3p_data *data = dev->data;
     am_hal_iom_transfer_t xfer;
     uint8_t index;
     bool ready;
-	int ret;
+    int ret = -EINVAL;
 
     k_mutex_lock(&data->mutex, K_FOREVER);
     xfer.bContinue = false;

@@ -61,7 +61,7 @@ int guix_driver_register(struct guix_driver *drv)
 static int guix_initialize(const struct device *dev __unused)
 {
     struct guix_driver *drv = guix_driver_list;
-    UINT ret;
+    int ret = -EINVAL;
     
     if (!drv)
         return -EINVAL;
@@ -70,7 +70,7 @@ static int guix_initialize(const struct device *dev __unused)
     #ifdef CONFIG_GUI_SPLIT_BINRES
         drv->mmap();
     #endif
-        ret = guix_main(drv->id, drv);
+        ret = (int)guix_main(drv->id, drv);
         if (ret) {
         #ifdef CONFIG_GUI_SPLIT_BINRES
             drv->unmap();

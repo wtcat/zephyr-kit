@@ -3,10 +3,16 @@
 set(BSP_ROOT        ${CMAKE_CURRENT_SOURCE_DIR}/../bsps)
 set(MODULES_ROOT    ${CMAKE_CURRENT_SOURCE_DIR}/../zephyr_pkg)
 set(COMPONENTS_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/../components)
+set(APP_ROOT        ${CMAKE_CURRENT_SOURCE_DIR})
 
 list(APPEND BOARD_ROOT ${BSP_ROOT})
 list(APPEND SOC_ROOT   ${BSP_ROOT})
 list(APPEND DTS_ROOT   ${BSP_ROOT})
+
+#Application modules(For userspace)
+#list(APPEND ZEPHYR_EXTRA_MODULES 
+#    ${APP_ROOT}/gui
+#)
 
 # Base modules
 list(APPEND ZEPHYR_EXTRA_MODULES 

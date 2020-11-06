@@ -1,0 +1,20 @@
+# BLE profiles
+
+menu "Profiles"
+
+config BLE_PROFILES_DIS
+    bool "dis"
+
+config BLE_PROFILES_GATT
+    bool "gatt"
+
+config BLE_PROFILES_GAP
+    bool "gap"
+    
+config BLE_PROFILES_HID
+    bool "hid"
+
+endmenu
+
+    
+

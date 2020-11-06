@@ -19,7 +19,6 @@
 //#define CONFIG_LCD_DEBUG
 #define CONFIG_SWAP_BYTEORDER
 #define CONFIG_LCD_RGB565_FORMAT
-#define CONFIG_LCD_MULTI_FRAME_BUFFER 0
 
 struct lcd_private;
 struct lcd_render {
@@ -30,21 +29,21 @@ struct lcd_render {
     size_t remain;
     size_t row_size;
     bool   first;
-    atomic_t waiter;
     k_timeout_t timeout;
     void (*draw)(struct lcd_render *render);
     void (*state)(struct lcd_render *render);
     
-#if IS_ENABLED(CONFIG_LCD_MULTI_FRAME_BUFFER)
+#if IS_ENABLED(CONFIG_LCD_DOUBLE_BUFFER)
     struct GX_CANVAS_STRUCT *canvas_next;
     GX_RECTANGLE *area_next;
+    struct k_spinlock lock;
 #endif
 };
 
 struct lcd_private {
     struct lcd_render render;
     struct observer_base pm;
-    struct gpio_callback cb;
+    //struct gpio_callback cb;
     const struct device *gpio;
     int			spino;
     int			spi_irq;
@@ -97,10 +96,10 @@ static void lcd_renderer_init(struct lcd_private *lcd,
 
 
 
-#if IS_ENABLED(CONFIG_LCD_MULTI_FRAME_BUFFER)
+#if IS_ENABLED(CONFIG_LCD_DOUBLE_BUFFER)
 #define LCD_BUFFER_SIZE ((LCD_WIDTH * LCD_HEIGH) / (sizeof(ULONG) / PIXEL_BYTE))
-static ULONG lcd_framebuffer[LCD_BUFFER_SIZE];
-static ULONG *lcd_current_framebuffer = lcd_framebuffer;
+static ULONG lcd_fbuffer[LCD_BUFFER_SIZE];
+static ULONG *lcd_current_fbuffer = lcd_fbuffer;
 #endif
 
 static const struct lcd_cmd lcd_command[] = {
@@ -460,7 +459,6 @@ static void lcd_draw_by_dmabuf(struct lcd_render *render)
     render->remain -= size; 
 }
 
-
 static void lcd_render_state_ready(struct lcd_render *render)
 {
     GX_RECTANGLE *area = &render->rect;
@@ -474,15 +472,22 @@ static void lcd_render_state_ready(struct lcd_render *render)
     render->state = lcd_render_state_fire;
 }
 
-#if IS_ENABLED(CONFIG_LCD_MULTI_FRAME_BUFFER)
-static void lcd_render_next_canvas(struct lcd_render *render)
+#if IS_ENABLED(CONFIG_LCD_DOUBLE_BUFFER)
+static bool lcd_render_next_canvas(struct lcd_render *render)
 {
+    k_spinlock_key_t key;
+
+    key = k_spin_lock(&render->lock);
     if (render->canvas_next) {
         lcd_renderer_init(render->lcd, render->canvas_next, 
             render->area_next);
         render->canvas_next = NULL;
         render->area_next = NULL;
+        k_spin_unlock(&render->lock, key);
+        return true;
     }
+    k_spin_unlock(&render->lock, key);
+    return false;
 }
 #endif
 
@@ -493,9 +498,8 @@ static void lcd_render_state_fire(struct lcd_render *render)
     } else {
         lcd_dbg("LCD display completed (Enter idle state)\n");
         render->state = lcd_render_state_idle;
-    #if IS_ENABLED(CONFIG_LCD_MULTI_FRAME_BUFFER)
-        lcd_render_next_canvas(render);
-        if (atomic_get(&render->waiter))
+    #if IS_ENABLED(CONFIG_LCD_DOUBLE_BUFFER)
+        if (lcd_render_next_canvas(render))
             k_sem_give(&render->sem);
     #else
         k_sem_give(&render->sem);
@@ -568,35 +572,33 @@ static void lcd_display_update(struct GX_CANVAS_STRUCT *canvas, GX_RECTANGLE *ar
 {
     struct lcd_private *lcd = canvas->gx_canvas_display->gx_display_driver_data;
     struct lcd_render *render = &lcd->render;
+    GX_EVENT event;
     int ret;
 
-#if IS_ENABLED(CONFIG_LCD_MULTI_FRAME_BUFFER)
-    unsigned int key;
-    key = irq_lock();
+#if IS_ENABLED(CONFIG_LCD_DOUBLE_BUFFER)
+    k_spinlock_key_t key;
+    key = k_spin_lock(&render->lock);
     
     if (render->state == lcd_render_state_idle) {
         lcd_dbg("LCD display start P0(%d, %d) P1(%d, %d)\n", 
             area->gx_rectangle_left, area->gx_rectangle_top, 
             area->gx_rectangle_right, area->gx_rectangle_bottom);
         lcd_renderer_init(lcd, canvas, area);
-        irq_unlock(key);
+        k_spin_unlock(&render->lock, key);
         
         /* Switch frame buffer */
-        ULONG *ptr = lcd_current_framebuffer;
-        lcd_current_framebuffer = canvas->gx_canvas_memory;
+        ULONG *ptr = lcd_current_fbuffer;
+        lcd_current_fbuffer = canvas->gx_canvas_memory;
         canvas->gx_canvas_memory = ptr;
         return;
     } 
 
     render->area_next = area;
     render->canvas_next = canvas;
-    irq_unlock(key);
-
-    atomic_add(&render->waiter, 1);
+    k_spin_unlock(&render->lock, key);
     ret = k_sem_take(&render->sem, render->timeout);
-    atomic_sub(&render->waiter, 1);
-    if (ret)
-        printk("%s LCD render timeout\n", __func__);
+    if (ret) 
+        goto reinit;
 #else
     if (render->state == lcd_render_state_idle) {
         lcd_dbg("LCD display start P0(%d, %d) P1(%d, %d)\n", 
@@ -604,22 +606,24 @@ static void lcd_display_update(struct GX_CANVAS_STRUCT *canvas, GX_RECTANGLE *ar
             area->gx_rectangle_right, area->gx_rectangle_bottom);
         lcd_renderer_init(lcd, canvas, area);
         ret = k_sem_take(&render->sem, render->timeout);
-        if (ret) {
-            GX_EVENT event;
-            printk("%s LCD render timeout(state: 0x%p)\n", __func__, render->state);
-            lcd_hardware_reset(lcd);
-            lcd_setup_commands(lcd, lcd_command, ARRAY_SIZE(lcd_command));
-            lcd_write_cmd(lcd->spi, 0x29, NULL, 0, false);
-            render->state = lcd_render_state_idle;
- 
-            event.gx_event_type = GX_EVENT_REDRAW;
-            event.gx_event_target = NULL;
-            gx_system_event_fold(&event);
-        }
-     } else {
+        if (ret)
+            goto reinit;
+    } else {
         printk("%s LCD controller occurred error\n", __func__);
-     }
-#endif /* CONFIG_LCD_MULTI_FRAME_BUFFER */
+    }
+#endif /* CONFIG_LCD_DOUBLE_BUFFER */
+    return;
+
+reinit:
+    printk("%s LCD render timeout(state: 0x%p)\n", __func__, render->state);
+    lcd_hardware_reset(lcd);
+    lcd_setup_commands(lcd, lcd_command, ARRAY_SIZE(lcd_command));
+    lcd_write_cmd(lcd->spi, 0x29, NULL, 0, false);
+    render->state = lcd_render_state_idle;
+
+    event.gx_event_type = GX_EVENT_REDRAW;
+    event.gx_event_target = NULL;
+    gx_system_event_fold(&event);  
 }
 
 
@@ -670,13 +674,12 @@ _err:
 static struct lcd_private lcd_device = {
     .render = {
         .state = lcd_render_state_idle,
-        .waiter = ATOMIC_INIT(0),
     },
     .spino    = 0,
     .spi_irq  = MSPI0_IRQn,
-	.spi      = NULL,     
-	.pin_rst  = 28,
-	.pin_te   = 30
+    .spi      = NULL,     
+    .pin_rst  = 28,
+    .pin_te   = 30
 };
 
 static int lcd_power_manage(struct observer_base *nb, 

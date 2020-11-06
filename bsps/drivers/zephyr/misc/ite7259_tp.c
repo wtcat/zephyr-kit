@@ -237,6 +237,7 @@ static void touch_daemon_thread(void *p1, void *p2, void *p3)
     event.gx_event_sender = 0;
     event.gx_event_target = 0;
     event.gx_event_display_handle = (ULONG)disp_driver_data;
+    state = GX_TOUCH_STATE_RELEASED;
 #endif
 
     for ( ; ; ) {

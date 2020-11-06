@@ -24,3 +24,7 @@ target_sources(app PRIVATE empty.c)
 
 # Source files
 add_subdirectory(application)
+
+if (NOT CONFIG_GUIX_USER_MODE)
+add_subdirectory(gui)
+endif()

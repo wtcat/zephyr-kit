@@ -1,3 +1,4 @@
 # Components menu
 
+rsource "ble/Kconfig"
 rsource "gui/Kconfig"

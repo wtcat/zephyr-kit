@@ -2,6 +2,10 @@
 #define LIB_GX_PORT_H_
 
 #include <stdint.h>
+#ifdef CONFIG_GUIX_USER_MODE
+#include <app_memory/app_memdomain.h>
+#endif
+
 #include "guix_zephyr_notify.h"
 
 typedef INT    GX_BOOL;
@@ -37,6 +41,10 @@ typedef SHORT  GX_VALUE;
 #define GX_INIT_AND_THREADS_CALLER_CHECKING
 #define GX_NOT_ISR_CALLER_CHECKING
 #define GX_THREAD_WAIT_CALLER_CHECKING
+
+/* */
+#define __gxidata K_APP_DMEM(guix_partition)
+#define __gxdata  K_APP_BMEM(guix_partition)
 
 #ifdef __cplusplus
 extern "C"{

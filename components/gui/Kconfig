@@ -10,7 +10,7 @@ if GUIX
 
 choice GUIX_ADAPT_IMPL
 prompt "GUIX for zephyr adapt layout"
-default GUIX_ZEPHYR_POSIX_BINDING
+default GUIX_ZEPHYR_SPIN_BINDING
 
 config GUIX_ZEPHYR_SPIN_BINDING
 	bool "GUIX binding-zephyr implement by spin-lock"
@@ -23,6 +23,10 @@ config GUIX_ZEPHYR_KQUEUE_BINDING
 	bool "GUIX binding-zephyr implement by kernel queue"
 	
 endchoice #GUIX_ADAPT_IMPL
+
+config GUIX_USER_MODE
+       bool "GUI runs in user mode"
+       depends on USERSPACE
 
 config GUIX_THREAD_STACK_SIZE
 	int "GUIX thread stack"
