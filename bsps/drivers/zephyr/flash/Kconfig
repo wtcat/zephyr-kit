@@ -1,0 +1,11 @@
+
+menu "Flash Device"
+
+config APOLLO_MSPI_NOR
+  bool "Apollo mspi nor-flash"
+  select MSPI_APOLLO3P
+  help
+    Flash device model is mx25u512g
+
+
+endmenu

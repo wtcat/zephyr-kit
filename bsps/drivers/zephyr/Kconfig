@@ -12,5 +12,7 @@ rsource "serial/Kconfig"
 rsource "gpio/Kconfig"
 rsource "i2c/Kconfig"
 rsource "misc/Kconfig"
+rsource "spi/Kconfig"
+rsource "flash/Kconfig"
 
 endif #APOLLO3P_DEVICE

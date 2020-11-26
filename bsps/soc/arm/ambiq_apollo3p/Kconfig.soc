@@ -11,5 +11,6 @@ config SOC_APOLLO3P
         select HAS_APOLLO_LIB
         select ARCH_HAS_CUSTOM_BUSY_WAIT
         select ARMV7_M_ARMV8_M_MAINLINE
+        select HAS_SEGGER_RTT
 	help
 	  Enable support for APOLLO3P MCU series

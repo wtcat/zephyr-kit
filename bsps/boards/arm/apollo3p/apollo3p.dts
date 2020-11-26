@@ -71,6 +71,15 @@
 
 &spi4 {
     status = "okay";
+    
+    lis2dh@1b {
+	compatible = "st,lis2dh";
+	label = "LIS2DH";
+	reg = <0x1b>;
+	spi-max-frequency = <1000000>;
+	/* irq-gpios = <&gpio 0 0>; */
+	/* disconnect-sdo-sa0-pull-up; */
+    };
 };
 
 &i2c5 {

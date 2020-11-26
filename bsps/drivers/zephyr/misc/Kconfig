@@ -10,7 +10,8 @@ comment "MISC Drivers"
 
 rsource "Kconfig.ite7259"
 rsource "Kconfig.rm6903"
-	  
+rsource "Kconfig.mspi"
+
 endif # MISC
 
 
