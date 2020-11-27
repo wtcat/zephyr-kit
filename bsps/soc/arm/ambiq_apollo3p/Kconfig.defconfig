@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: Apache-2.0
+
+config SOC
+    default "ambiq_apollo3p"
+
+config NUM_IRQS
+	default 34
