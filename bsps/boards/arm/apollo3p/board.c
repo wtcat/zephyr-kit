@@ -185,6 +185,7 @@ static const am_hal_gpio_pincfg_t k_mspi1_d3 __unused = {
     .uIOMnum             = 1
 };
 
+
 static const am_hal_gpio_pincfg_t k_mspi1_sck __unused = {
     .uFuncSel            = AM_HAL_PIN_59_MSPI1_8,
     .eDriveStrength      = AM_HAL_GPIO_PIN_DRIVESTRENGTH_12MA,
@@ -193,6 +194,40 @@ static const am_hal_gpio_pincfg_t k_mspi1_sck __unused = {
     .uIOMnum             = 1
 };
 
+/*
+ * IOM4 (SPI)
+ */
+static const am_hal_gpio_pincfg_t k_iom4_spi_miso __unused = {
+    .uFuncSel            = AM_HAL_PIN_40_M4MISO,
+    .bIomMSPIn           = 1,
+    .uIOMnum             = 4
+};
+
+static const am_hal_gpio_pincfg_t k_iom4_spi_mosi __unused = {
+    .uFuncSel            = AM_HAL_PIN_44_M4MOSI,
+    .eDriveStrength      = AM_HAL_GPIO_PIN_DRIVESTRENGTH_12MA,
+    .bIomMSPIn           = 1,
+    .uIOMnum             = 4
+};
+
+static const am_hal_gpio_pincfg_t k_iom4_spi_sck __unused = {
+    .uFuncSel            = AM_HAL_PIN_39_M4SCK,
+    .eDriveStrength      = AM_HAL_GPIO_PIN_DRIVESTRENGTH_12MA,
+    .bIomMSPIn           = 1,
+    .uIOMnum             = 4
+};
+
+const am_hal_gpio_pincfg_t k_iom4_spi_cs __unused = {
+    .uFuncSel            = AM_HAL_PIN_31_NCE31,
+    .eDriveStrength      = AM_HAL_GPIO_PIN_DRIVESTRENGTH_12MA,
+    .eGPOutcfg           = AM_HAL_GPIO_PIN_OUTCFG_PUSHPULL,
+    .eGPInput            = AM_HAL_GPIO_PIN_INPUT_NONE,
+    .eIntDir             = AM_HAL_GPIO_PIN_INTDIR_LO2HI,
+    .bIomMSPIn           = 1,
+    .uIOMnum             = 4,
+    .uNCE                = 0,
+    .eCEpol              = AM_HAL_GPIO_PIN_CEPOL_ACTIVELOW
+};
 
 /*
  * Board GPIO configure information
@@ -228,11 +263,18 @@ static const struct io_config board_gpio[] = {
     _IO_ITEM("mspi1_d3",  54, IO_NONE, &k_mspi1_d3),
     _IO_ITEM("mspi1_sck", 59, IO_NONE, &k_mspi1_sck),
 
+    /* G-SENSOR */
+    _IO_ITEM("gsensor_1v8",   16, IO_HIGH, &k_gpio_output),
+    _IO_ITEM("gsensor_cs",    31, IO_NONE,  &k_iom4_spi_cs),
+   //_IO_ITEM("iom4_spi_cs",    13, IO_NONE, &k_iom4_spi_cs),
+    _IO_ITEM("iom4_spi_sck",  39, IO_NONE, &k_iom4_spi_sck),
+    _IO_ITEM("iom4_spi_mosi", 44, IO_NONE, &k_iom4_spi_mosi),
+    _IO_ITEM("iom4_spi_miso", 40, IO_NONE, &k_iom4_spi_miso),
+
     /* UART 1*/
     _IO_ITEM("uart1_tx",  71, IO_NONE, &k_uart1_tx),
     _IO_ITEM("uart1_rx",  72, IO_NONE, &k_uart1_rx),		
 };
-
 
 static void apollo3p_gpio_init(void)
 {

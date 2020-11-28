@@ -118,7 +118,7 @@ struct mspi_nor_config {
 static int mspi_send_cmd(struct mspi_nor_priv *data, uint16_t cmd, 
 	void *buf, size_t size, enum mspi_transfer_dir dir)
 {
-    am_hal_mspi_pio_transfer_t xfer;
+    am_hal_mspi_pio_transfer_t xfer = {0};
 
     if (dir == MSPI_RX) {
         xfer.eDirection = AM_HAL_MSPI_RX;
@@ -162,7 +162,7 @@ static uint32_t nor_end(const struct mspi_nor_config *cfg)
 
 static uint32_t mspi_nor_read_id(struct mspi_nor_priv *data, uint16_t id_cmd)
 {
-    uint32_t id = ~0U;
+    uint32_t id = 0;
     mspi_send_cmd(data, id_cmd, &id, 3, MSPI_RX);
     return id;
 }
@@ -216,7 +216,7 @@ static int mspi_nor_read(const struct device *dev, off_t addr,
 
     if (offset < cfg->start ||
         offset + size > nor_end(cfg)) {
-        LOG_ERR("flash read address(0x%lx) is invalid\n", addr);
+        LOG_ERR("flash read address(0x%x) is invalid\n", (uint32_t)addr);
         return -EINVAL;
     }
 
@@ -244,7 +244,7 @@ static int mspi_nor_write(const struct device *dev, off_t addr,
 
     if (offset < cfg->start ||
         offset + size > nor_end(cfg)) {
-        LOG_ERR("flash write address(0x%lx) is invalid\n", addr);
+        LOG_ERR("flash write address(0x%x) is invalid\n", (uint32_t)addr);
         return -EINVAL;
     }
 
@@ -287,7 +287,7 @@ static int mspi_nor_erase(const struct device *dev, off_t addr,
 
     if (offset < cfg->start ||
         offset + size > nor_end(cfg)) {
-        LOG_ERR("flash erase address(0x%lx) is invalid\n", addr);
+        LOG_ERR("flash erase address(0x%x) is invalid\n", (uint32_t)addr);
         return -EINVAL;
     }
 
@@ -453,8 +453,8 @@ static int mspi_nor_init(const struct device *dev)
 
     ret |= mspi_send_cmd(data, GD25LQ256_4B_ENABLE, NULL, 0, MSPI_TX);
     ret |= mspi_send_cmd(data, WRITE_DISABLE_CMD, NULL, 0, MSPI_TX);
-    ret |= mspi_send_cmd(data, READ_STATUS_REG_1_CMD, data, 1, MSPI_RX);
-    ret |= mspi_send_cmd(data, READ_STATUS_REG_2_CMD, data, 1, MSPI_RX);
+    ret |= mspi_send_cmd(data, READ_STATUS_REG_1_CMD, buf, 1, MSPI_RX);
+    ret |= mspi_send_cmd(data, READ_STATUS_REG_2_CMD, buf, 1, MSPI_RX);
     if (!ret)
         ready = true;
 out:

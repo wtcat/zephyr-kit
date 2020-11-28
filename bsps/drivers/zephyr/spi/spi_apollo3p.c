@@ -27,6 +27,10 @@ struct spi_apollo3p_data {
 
 #define DT_DRV_COMPAT ambiq_apollo3p_spi
 
+static const uint32_t spi_insmask[] = {
+    0x00000000, 0x000000FF, 0x0000FFFF, 0x00FFFFFF, 0xFFFFFFFF
+};
+
 #ifdef CONFIG_SPI_APOLLO3P_INTERRUPT
 static void spi_apollo3p_isr(const void *parameter)
 {
@@ -143,6 +147,7 @@ static void spi_transfer_next(struct spi_apollo3p_data *data,
         uint32_t ret;
 
         data->chunk_len = chunk_len;
+        
         if (spi_context_tx_buf_on(ctx)) {
             xfer.pui32TxBuffer = (uint32_t *)ctx->tx_buf;
             xfer.eDirection = AM_HAL_IOM_TX;
@@ -180,46 +185,51 @@ static void spi_transfer_next(struct spi_apollo3p_data *data,
             struct spi_context *ctx)
 {
     am_hal_iom_transfer_t xfer;
-    size_t chunk_len;
-    uint32_t ret;
+    uint32_t ins_len;
     int error = 0;
-    
-    while (true) {
-        chunk_len = spi_context_max_continuous_chunk(ctx);
-        if (!chunk_len)
-            break;
-    
-        if (spi_context_tx_buf_on(ctx)) {
+
+    if (ctx->rx_count == 2 && !ctx->rx_buf) {
+        ins_len = ctx->tx_len - 1;
+        xfer.eDirection = AM_HAL_IOM_RX;
+        xfer.ui32Instr = *(uint32_t *)ctx->tx_buf & spi_insmask[ins_len];
+        xfer.ui32InstrLen = ins_len;
+        xfer.pui32RxBuffer = (uint32_t *)ctx->current_rx[1].buf;
+        xfer.pui32TxBuffer = NULL;
+        xfer.ui32NumBytes = ctx->current_rx[1].len;
+    } else if (ctx->tx_count) {
+        xfer.eDirection = AM_HAL_IOM_TX;
+        xfer.pui32RxBuffer = NULL;
+        if (ctx->tx_count == 2) {
+            ins_len = ctx->tx_len;
+            xfer.ui32Instr = *(uint32_t *)ctx->tx_buf & spi_insmask[ins_len];
+            xfer.ui32InstrLen = ins_len;
+            xfer.pui32TxBuffer = (uint32_t *)ctx->current_tx[1].buf;
+            xfer.ui32NumBytes = ctx->current_tx[1].len;
+        } else if (ctx->tx_count == 1) {
+            xfer.ui32InstrLen = 0;
+            xfer.ui32Instr = 0; 
             xfer.pui32TxBuffer = (uint32_t *)ctx->tx_buf;
-            xfer.eDirection = AM_HAL_IOM_TX;
-        } else if (spi_context_rx_buf_on(ctx)) {
-            xfer.pui32RxBuffer = (uint32_t *)ctx->rx_buf;
-            xfer.eDirection = AM_HAL_IOM_RX;
+            xfer.ui32NumBytes = ctx->tx_len;
         } else {
-            goto _exit;
+            error = -EINVAL;
+            goto _out;
         }
-
-        xfer.ui32NumBytes = chunk_len;
-        xfer.ui32InstrLen = 0;
-        xfer.ui32Instr = 0;
-        xfer.uPeerInfo.ui32SpiChipSelect = 0;
-        xfer.bContinue = false;
-        xfer.ui8RepeatCount = 0;
-        xfer.ui32PauseCondition = 0;
-        xfer.ui32StatusSetClr = 0;
-        ret = am_hal_iom_blocking_transfer(data->handle, &xfer);
-        if (ret != AM_HAL_STATUS_SUCCESS) {
-            error = -EIO;
-            break;
-        }
-
-		spi_context_update_tx(ctx, 1, chunk_len);
-		spi_context_update_rx(ctx, 1, chunk_len); 
+    } else {
+            error = -EINVAL;
+            goto _out;
+    }
+  
+    xfer.uPeerInfo.ui32SpiChipSelect = 0;
+    xfer.bContinue = false;
+    xfer.ui8RepeatCount = 0;
+    xfer.ui32PauseCondition = 0;
+    xfer.ui32StatusSetClr = 0;
+    error = am_hal_iom_blocking_transfer(data->handle, &xfer);
+    if (error) {
+        LOG_DBG("Transaction finished with status %d", error);
     }
 
- _exit:
-    spi_context_cs_control(ctx, false);
-    LOG_DBG("Transaction finished with status %d", error);
+_out:    
     spi_context_complete(ctx, error);
 }
 #endif /* CONFIG_SPI_APOLLO3P_INTERRUPT */
@@ -301,7 +311,7 @@ static const struct spi_driver_api spi_apollo3p_driver_api = {
 
 #define SPI_APOLLO3P_DEFINE_CONFIG(n)					\
 	static const struct spi_apollo3p_config spi_apollo3p_config_##n = {	\
-	    .devno = n, \
+	    .devno = DT_INST_LABEL(n)[4] - '0', \
 	    .irq = DT_IRQ(DT_NODELABEL(spi##n), irq),  \
 	    .priority = DT_IRQ(DT_NODELABEL(spi##n), priority), \
 	}

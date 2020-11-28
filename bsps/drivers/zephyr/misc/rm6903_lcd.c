@@ -273,7 +273,7 @@ static const struct lcd_cmd lcd_command[] = {
 	INIT_CMD(0XC4,  0x80, 1, 0),
 //	INIT_CMD(0X36,  0x08, 1, 0),//Red Blue change
 //#if GUI_ANGE_MODE	== 1
-	INIT_CMD(0X36,  0x12, 1, 0),//Red Blue change
+	//INIT_CMD(0X36,  0x12, 1, 0),//Red Blue change
 //#elif GUI_ANGE_MODE	== 0
 	//INIT_CMD(0X36,  0x00, 1, 0),//Red Blue change
 //#endif	

@@ -172,13 +172,7 @@ int mspi_apollo3p_configure(struct mspi_device *dev,
         goto _disable;
     }
 
-    ret = irq_connect_dynamic(dev->irq, 0, mspi_apollo3p_isr, dev, 0);
-    if (ret) {
-        LOG_ERR("Install irq for mspi(%d) failed with error %d\n", 
-        dev->devno, ret);
-        goto _disable;
-    }
-
+    irq_connect_dynamic(dev->irq, 0, mspi_apollo3p_isr, dev, 0);
     am_hal_mspi_interrupt_clear(dev->handle, 
             AM_HAL_MSPI_INT_CQUPD|AM_HAL_MSPI_INT_ERR);
     am_hal_mspi_interrupt_enable(dev->handle, 

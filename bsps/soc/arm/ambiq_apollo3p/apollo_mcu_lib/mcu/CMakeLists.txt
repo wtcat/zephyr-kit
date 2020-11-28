@@ -3,6 +3,7 @@
 
 zephyr_compile_definitions(
 	-DAM_HAL_DISABLE_API_VALIDATION
+	-DAM_PACKAGE_BGA
 )
 
 set(ambiq_socs
