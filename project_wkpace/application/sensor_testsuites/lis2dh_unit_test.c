@@ -14,8 +14,10 @@ static void fetch_and_display(const struct device *sensor)
 	static unsigned int count;
 	struct sensor_value accel[3];
 	const char *overrun = "";
-	int rc = sensor_sample_fetch(sensor);
+	float x, y, z;
+	int rc;
 
+        rc = sensor_sample_fetch(sensor);
 	++count;
 	if (rc == -EBADMSG) {
 		/* Sample overrun.  Ignore in polled mode. */
@@ -32,11 +34,12 @@ static void fetch_and_display(const struct device *sensor)
 	if (rc < 0) {
 		printf("ERROR: Update failed: %d\n", rc);
 	} else {
+	        x = sensor_value_to_double(&accel[0]);
+	        y = sensor_value_to_double(&accel[1]);
+	        z = sensor_value_to_double(&accel[2]);
 		printf("#%u @ %u ms: %sx %f , y %f , z %f\n",
 		       count, k_uptime_get_32(), overrun,
-		       sensor_value_to_double(&accel[0]),
-		       sensor_value_to_double(&accel[1]),
-		       sensor_value_to_double(&accel[2]));
+		       x, y, z);
 	}
 }
 
