@@ -56,7 +56,7 @@ static const uint8_t cteValEnableCh[] = {ATT_PROP_WRITE, UINT16_TO_BYTES(CTE_ENA
 static const uint16_t cteLenEnableCh = sizeof(cteValEnableCh);
 
 /*! Constant Tone Extension enable value. */
-static uint8_t cteValEnable[] = {0};
+static uint8_t cteValEnable[2] = {0};
 static const uint16_t cteLenEnable = sizeof(cteValEnable);
 
 /*! Constant Tone Extension minimum length characteristic. */

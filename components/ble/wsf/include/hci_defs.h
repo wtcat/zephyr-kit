@@ -535,6 +535,10 @@ extern "C" {
 #define HCI_LEN_LE_READ_SUP_STATES                   0
 #define HCI_LEN_LE_RECEIVER_TEST                     1
 #define HCI_LEN_LE_TRANSMITTER_TEST                  3
+
+#define HCI_LEN_LE_TRANSMITTER_TEST_V3               82
+#define HCI_LEN_LE_RECEIVER_TEST_V3                  82
+
 #define HCI_LEN_LE_TEST_END                          0
 /*! \brief New in version 4.1 */
 #define HCI_LEN_LE_REM_CONN_PARAM_REP                14
@@ -589,6 +593,9 @@ extern "C" {
 /*! \brief New in version 5.1 */
 #define HCI_LEN_LE_SET_CONN_CTE_RX_PARAMS(spLen)     (5 + (spLen))
 #define HCI_LEN_LE_SET_CONN_CTE_TX_PARAMS(spLen)     (4 + (spLen))
+#define HCI_LEN_LE_SET_CONLESS_CTE_TX_PARAMS(spLen)  (5 + (spLen))
+#define HCI_LEN_LE_SET_CONLESS_IQ_SAMPLE_EN(spLen)  (6 + (spLen))
+#define HCI_LEN_LE_SET_CONLESS_CTE_TX_ENABLE     2
 #define HCI_LEN_LE_CONN_CTE_REQ_ENABLE               7
 #define HCI_LEN_LE_CONN_CTE_RSP_ENABLE               3
 #define HCI_LEN_LE_READ_ANTENNA_INFO                 0
@@ -1316,6 +1323,7 @@ extern "C" {
 #define HCI_SCAN_DATA_LEN                            31      /*!< \brief Length of scan response data */
 #define HCI_EXT_ADV_DATA_LEN                         251     /*!< \brief Length of extended advertising data */
 #define HCI_EXT_ADV_CONN_DATA_LEN                    191     /*!< \brief Length of extended connectable advertising data */
+
 #define HCI_PER_ADV_DATA_LEN                         252     /*!< \brief Length of periodic advertising data */
 #define HCI_EXT_ADV_RPT_DATA_LEN                     229     /*!< \brief Length of extended advertising report data */
 #define HCI_PER_ADV_RPT_DATA_LEN                     247     /*!< \brief Length of periodic advertising report data */

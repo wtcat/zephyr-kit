@@ -101,6 +101,9 @@ enum
 #define APP_RESOLVE_DIRECT_RPA      1          /*!< \brief Resolving RPA the directed advertisement is being
                                                     directed to (InitA) */
 
+#define MTU_REQ_SIZE            247
+#define LE_MAX_TX_SIZE          251
+#define LE_MAX_TX_TIME         (2120)
 /**************************************************************************************************
   Data Types
 **************************************************************************************************/
@@ -210,6 +213,7 @@ typedef struct
   uint8_t     addrType;                        /*!< \brief Peer address type */
   uint8_t     directAddrType;                  /*!< \brief Address directed advertisement is addressed to */
   bdAddr_t    directAddr;                      /*!< \brief Type of address directed advertisement is addressed to */
+  uint8_t     secPhy;                          /*!< \brief Secondary Advertising channel for extended advertising */
 } appDevInfo_t;
 
 /*!

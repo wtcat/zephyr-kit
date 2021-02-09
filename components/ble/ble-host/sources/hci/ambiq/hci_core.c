@@ -97,7 +97,10 @@ const uint8_t hciLeEventMask[HCI_LE_EVT_MASK_LEN] =
   HCI_EVT_MASK_LE_SCAN_TIMEOUT_EVT |              /* Byte 2 */
   HCI_EVT_MASK_LE_ADV_SET_TERM_EVT |              /* Byte 2 */
   HCI_EVT_MASK_LE_SCAN_REQ_RCVD_EVT |             /* Byte 2 */
-  HCI_EVT_MASK_LE_CH_SEL_ALGO_EVT,                /* Byte 2 */
+  HCI_EVT_MASK_LE_CH_SEL_ALGO_EVT|                /* Byte 2 */
+  HCI_EVT_MASK_LE_CONNLESS_IQ_REPORT_EVT|         /* Byte 2 */
+  HCI_EVT_MASK_LE_CONN_IQ_REPORT_EVT|             /* Byte 2 */
+  HCI_EVT_MASK_LE_CTE_REQ_FAILED_EVT,             /* Byte 2 */
   0,                                              /* Byte 3 */
   0,                                              /* Byte 4 */
   0,                                              /* Byte 5 */

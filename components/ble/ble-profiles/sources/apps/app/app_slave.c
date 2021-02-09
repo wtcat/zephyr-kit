@@ -36,6 +36,7 @@
 #include <stdbool.h>
 #include "hci_drv_apollo.h"
 #include "dm_api.h"
+#include "wsf_trace.h"
 
 /**************************************************************************************************
   Macros
@@ -64,6 +65,10 @@
 
 /* Slave control block */
 appSlaveCb_t appSlaveCb;
+
+#ifdef AM_BLE_USE_NVM
+bool_t devFoundInDb = FALSE;
+#endif
 
 /**************************************************************************************************
   Local Functions
@@ -580,6 +585,9 @@ static void appSlaveResolvedAddrInd(dmEvt_t *pMsg, appConnCb_t *pCb)
   /* if RPA resolved */
   if (pMsg->hdr.status == HCI_SUCCESS)
   {
+#ifdef AM_BLE_USE_NVM
+    devFoundInDb = TRUE;
+#endif
     /* record found */
     pCb->dbHdl = appSlaveCb.dbHdl;
 
@@ -676,7 +684,13 @@ void appSlaveSecConnOpen(dmEvt_t *pMsg, appConnCb_t *pCb)
     /* resolve master's RPA to see if we already have a bond with this device */
     appSlaveResolveAddr(pMsg);
   }
-
+#ifdef AM_BLE_USE_NVM
+  else if(pCb->dbHdl != NULL)
+  {
+    devFoundInDb = TRUE;
+  }
+#endif
+  
   /* send slave security request if configured to do so */
   if (pAppSecCfg->initiateSec && AppDbCheckBonded())
   {
@@ -701,6 +715,9 @@ void appSecConnClose(dmEvt_t *pMsg, appConnCb_t *pCb)
   {
     AppDbCheckValidRecord(pCb->dbHdl);
   }
+#ifdef AM_BLE_USE_NVM
+  devFoundInDb = FALSE;
+#endif
 }
 
 /*************************************************************************************************/
@@ -860,6 +877,28 @@ static void appSecEncryptInd(dmEvt_t *pMsg, appConnCb_t *pCb)
     pCb->bonded = TRUE;
     pCb->bondByLtk = FALSE;
   }
+
+#ifdef AM_BLE_USE_NVM
+  if( devFoundInDb )
+  {
+    uint8_t i = 0;
+    uint8_t connId = (uint8_t)pMsg->hdr.param;
+    appDbHdl_t dbHdl = AppDbGetHdl(connId);
+    uint16_t *pTbl = AppDbGetCccTbl(dbHdl);
+
+    // going to restore ccc value if found
+    if(pTbl!=NULL)
+    {
+        for (i = 0; i < AttsGetCccTableLen(); i++, pTbl++)
+        {
+            if(*pTbl != 0)
+            {
+                AttsCccSet(connId, i, *pTbl);
+            }
+        }
+    }
+  }
+#endif
 }
 
 /*************************************************************************************************/
@@ -979,8 +1018,7 @@ static void appSlaveConnUpdateTimeout(wsfMsgHdr_t *pMsg, appConnCb_t *pCb)
   idle = (DmConnCheckIdle(pCb->connId) == 0);
 
   /* if connection is idle and was also idle on last check */
-  // if (idle && pCb->connWasIdle)
-  if(1)
+  if (idle && pCb->connWasIdle)
   {
     /* do update */
     pCb->attempts++;
@@ -1132,22 +1170,46 @@ void AppSlaveProcDmMsg(dmEvt_t *pMsg)
       break;
 
     case DM_REMOTE_FEATURES_IND:
-      /* If conn update is waiting for features, perform the conn update timeout action */
-      if (pCb->updateState == APP_CU_STATE_WAIT_FEATURES)
-      {
-        appSlaveConnUpdateTimeout((wsfMsgHdr_t*) pMsg, pCb);
-      }
-      else
+    {
+        hciEvt_t *pEvent = (hciEvt_t *)pMsg;
+        uint8_t data_len_ext = pEvent->leReadRemoteFeatCmpl.features[0]&HCI_LE_SUP_FEAT_DATA_LEN_EXT;
+        APP_TRACE_INFO2("remote feature: 0x%x,  DLE:0x%x", pEvent->leReadRemoteFeatCmpl.features[0],data_len_ext);
+		if(data_len_ext == HCI_LE_SUP_FEAT_DATA_LEN_EXT)
+		{
+		    APP_TRACE_INFO0("Remote device support DLE");
+			DmConnSetDataLen(pMsg->hdr.param, LE_MAX_TX_SIZE, LE_MAX_TX_TIME);
+		}
+		else
+		{
+		   APP_TRACE_INFO0("Remote device doesn't support DLE"); 
+		}	  
+  	  /* If conn update is waiting for features, perform the conn update timeout action */
+	  if (pCb->updateState == APP_CU_STATE_WAIT_FEATURES)
+	  {
+	    appSlaveConnUpdateTimeout((wsfMsgHdr_t*) pMsg, pCb);
+	  }
+	  else
       {
         pCb->updateState = APP_CU_STATE_UPDATING;
       }
-      break;
+    }
+    break;
+      
+    case DM_CONN_DATA_LEN_CHANGE_IND:
+        APP_TRACE_INFO3("data length exchange, status= %d, maxRXLen= %d, maxTXlen= %d", pMsg->dataLenChange.hdr.status, pMsg->dataLenChange.maxRxOctets, pMsg->dataLenChange.maxTxOctets);
+
+        if (AttGetMtu(pCb->connId) == ATT_DEFAULT_MTU)
+        { 		  
+          AttcMtuReq(pCb->connId, MTU_REQ_SIZE);
+        }   
+		  
+	  break;
 
     case DM_HW_ERROR_IND:
       HciDrvRadioBoot(0);
       DmDevReset();
 	  break;
-	  
+      
     default:
       break;
   }

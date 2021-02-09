@@ -1,4 +1,14 @@
 # Components menu
 
 rsource "ble/Kconfig"
-rsource "gui/Kconfig"
+
+menuconfig GUIX
+	bool "GUIX for zephyr"
+	help
+	  Enable options for GUIX.
+if GUIX
+  rsource "gui/Kconfig"
+endif
+
+rsource "stp/Kconfig"
+rsource "protobuf-c/Kconfig"

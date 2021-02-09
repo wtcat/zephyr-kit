@@ -11,7 +11,7 @@
 
 //*****************************************************************************
 //
-// Copyright (c) 2020, Ambiq Micro
+// Copyright (c) 2020, Ambiq Micro, Inc.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// This is part of revision 2.4.2 of the AmbiqSuite Development Package.
+// This is part of revision 2.5.1 of the AmbiqSuite Development Package.
 //
 //*****************************************************************************
 
@@ -74,6 +74,7 @@
   Macros
 **************************************************************************************************/
 #define MEASURE_THROUGHPUT
+#define AMDTPS_TXTEST
 
 /*! WSF message event starting value */
 #define AMDTP_MSG_START               0xA0
@@ -697,7 +698,7 @@ void amdtpDtpRecvCback(uint8_t * buf, uint16_t len)
 #ifdef MEASURE_THROUGHPUT
     static bool measTpStarted = false;
 #endif
-#if 0
+#if 1// for test
     // reception callback
     // print the received data
     APP_TRACE_INFO0("-----------AMDTP Received data--------------\n");

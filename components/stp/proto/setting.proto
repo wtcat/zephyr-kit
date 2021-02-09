@@ -1,0 +1,24 @@
+syntax = "proto2";
+package setting;
+
+//SPEED/CODE_SIZE/LITE_RUNTIME
+option optimize_for=SPEED;
+
+message Time {
+    required fixed32 unix_timestamp : 1; //Unix timestamp
+}
+
+message Alarm {
+    message Body {
+        required uint32 hour = 1;
+        required uint32 min = 2;
+        required uint32 sec = 3;
+        required uint32 weekbits = 4; //Monday(0x01), Tuesday(0x02),..., Sunday(0x40)
+        required bool repeat = 5;
+    }
+    repeated Body entities = 1;
+}
+
+
+
+

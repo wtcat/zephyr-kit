@@ -159,6 +159,7 @@ void WsfTimerInit(void)
     xWsfTimer = xTimerCreate("WSF Timer", pdMS_TO_TICKS(WSF_MS_PER_TICK),
           pdFALSE, NULL, WsfTimer_handler);
     configASSERT(xWsfTimer);
+    g_ui32LastTime = xTaskGetTickCount();
   }
 }
 

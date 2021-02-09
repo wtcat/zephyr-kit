@@ -8,6 +8,7 @@ menuconfig MISC
 if MISC
 comment "MISC Drivers"
 
+rsource "Kconfig.key"
 rsource "Kconfig.ite7259"
 rsource "Kconfig.rm6903"
 rsource "Kconfig.mspi"

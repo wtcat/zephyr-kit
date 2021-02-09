@@ -23,6 +23,8 @@
 //#include "ancc_api.h"
 //#include "app_ui.h"
 
+//run demo
+#include "amdtp_api.h"
 
 #include <init.h>
 #include <kernel.h>
@@ -139,6 +141,8 @@ static int ble_stack_init(void)
 
     //hid = WsfOsSetNextHandler(ble_app_Handler);
     //ble_app_HandlerInit(hid);
+    hid = WsfOsSetNextHandler(AmdtpHandler);
+    AmdtpHandlerInit(hid);
 
     hid = WsfOsSetNextHandler(HciDrvHandler);
     HciDrvHandlerInit(hid);
@@ -158,7 +162,8 @@ static void ble_radio_thread(void *arg)
     }
     
     /* Application initialize */
-    wsf_main();
+    //wsf_main();
+    AmdtpStart();
 
     for ( ; ; ) {
         /*

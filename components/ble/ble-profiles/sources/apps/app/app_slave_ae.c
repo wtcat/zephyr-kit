@@ -575,7 +575,7 @@ void AppExtSetAdvType(uint8_t advHandle, uint8_t advType)
     /* set maximum advertising data length allowed by Controller for this advertising type */
     appSlaveCb.maxAdvDataLen[advHandle] = DmExtMaxAdvDataLen(advType,
                                             pAppExtAdvCfg->useLegacyPdu[advHandle]);
-
+    appSlaveCb.advState[advHandle] = APP_ADV_STATE1;
     appSetAdvType(advHandle, advType, pAppExtAdvCfg->advInterval[advHandle],
                   pAppExtAdvCfg->advDuration[advHandle], pAppExtAdvCfg->maxEaEvents[advHandle],
                   TRUE);

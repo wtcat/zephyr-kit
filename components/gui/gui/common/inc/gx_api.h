@@ -2596,6 +2596,10 @@ typedef struct GX_TREE_VIEW_STRUCT
 /* Animation information structure. This structure is used to define the
    parameters of a screen transition animation.  */
 
+#define GX_ANIMATION_LIMIT_STYLE_NONE                 0
+#define GX_ANIMATION_LIMIT_STYLE_VERTICAL_DOWN        1
+#define GX_ANIMATION_LIMIT_STYLE_VERTICAL_UP          2
+
 typedef struct GX_ANIMATION_INFO_STRUCT
 {
     GX_WIDGET  *gx_animation_target;
@@ -2610,6 +2614,9 @@ typedef struct GX_ANIMATION_INFO_STRUCT
     GX_UBYTE    gx_animation_start_alpha;
     GX_UBYTE    gx_animation_end_alpha;
     GX_UBYTE    gx_animation_steps;
+
+    // add by wangchao
+    GX_UBYTE   gx_animation_range_limit_type; //0: NULL 1: horizontal 2：vertical
 } GX_ANIMATION_INFO;
 
 /* Animation control block */

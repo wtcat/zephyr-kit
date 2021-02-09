@@ -51,6 +51,8 @@ extern "C" {
 #define DM_ID_PAST                    12
 #define DM_ID_CONN_CTE                13
 #define DM_NUM_IDS                    14
+#define DM_ID_CIS                     15
+#define DM_ID_REQ_SCA                 16
 
 /* Start of component message enumeration */
 #define DM_MSG_START(id)              ((id) << 4)

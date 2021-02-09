@@ -124,6 +124,10 @@ static void hciCoreExtResetSequence(uint8_t *pMsg, uint16_t opcode)
   /* decode opcode */
   switch (opcode)
   {
+    case HCI_OPCODE_LE_WRITE_DEF_DATA_LEN:
+      HciReadLocalVerInfoCmd();
+    break;
+    
     case HCI_OPCODE_READ_LOCAL_VER_INFO:
       /* send next command in sequence */
       hciCoreReadMaxAdvDataLen();

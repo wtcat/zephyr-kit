@@ -235,11 +235,9 @@ static const appPlxScm_t appHwPlxScm =
  *  \return None.
  */
 /*************************************************************************************************/
-extern uint8_t bat_get_percent(void);
 void AppHwBattRead(uint8_t *pLevel)
 {
-// *pLevel = appHwBattLevel;
-	*pLevel = bat_get_percent();
+ *pLevel = appHwBattLevel;
 }
 
 /*************************************************************************************************/

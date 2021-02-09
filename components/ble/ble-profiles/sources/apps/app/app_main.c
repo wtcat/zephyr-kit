@@ -69,6 +69,8 @@ appCfg_t *pAppCfg;
 /*! Connection control block array */
 appConnCb_t appConnCb[DM_CONN_MAX];
 
+appExtConnCb_t appExtConnCb[DM_CONN_MAX];
+
 /*! WSF handler ID */
 wsfHandlerId_t appHandlerId;
 

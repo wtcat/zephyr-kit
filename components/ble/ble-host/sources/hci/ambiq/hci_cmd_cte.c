@@ -1,4 +1,4 @@
-ï»¿/* Copyright (c) 2009-2019 Arm Limited
+/* Copyright (c) 2009-2019 Arm Limited
  * SPDX-License-Identifier: Apache-2.0
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,6 +23,7 @@
 #include <string.h>
 #include "wsf_types.h"
 #include "wsf_msg.h"
+#include "wsf_trace.h"
 #include "util/bstream.h"
 #include "hci_cmd.h"
 #include "hci_api.h"
@@ -163,3 +164,99 @@ void HciLeReadAntennaInfoCmd(void)
     hciCmdSend(pBuf);
   }
 }
+
+/*************************************************************************************************/
+/*!
+ *  \brief      HCI LE set connectionless CTE transmit parameters command.
+ *
+ *  \param      advHandle   Identify an advertising set.
+ *  \param      cteLen      Constant Tone Extension length in 8 ¦Ìs units
+ *  \param      cteType
+ *  \param      switchPatternLen Number of Antenna IDs in switching pattern.
+ *  \param      pAntennaIDs      List of Antenna IDs in switching pattern.
+ *
+ *  \return     None.
+ */
+/*************************************************************************************************/
+void HciLeSetConnectionlessCteTxParamsCmd(uint8_t advHandle, uint8_t cteLen, uint8_t cteCnt, uint8_t cteType, uint8_t switchPatternLen,
+                                uint8_t *pAntennaIDs)
+{
+  uint8_t *pBuf;
+  uint8_t *p;
+
+  if ((pBuf = hciCmdAlloc(HCI_OPCODE_LE_SET_CONNLESS_CTE_TX_PARAMS,
+                          HCI_LEN_LE_SET_CONLESS_CTE_TX_PARAMS(switchPatternLen))) != NULL)
+  {
+    p = pBuf + HCI_CMD_HDR_LEN;
+    UINT8_TO_BSTREAM(p, advHandle);
+    UINT8_TO_BSTREAM(p, cteLen);
+    UINT8_TO_BSTREAM(p, cteType);
+    UINT8_TO_BSTREAM(p, cteCnt);
+    UINT8_TO_BSTREAM(p, switchPatternLen);
+    memcpy(p, pAntennaIDs, switchPatternLen);
+    
+    hciCmdSend(pBuf);
+  }
+}
+
+
+/*************************************************************************************************/
+/*!
+  *  \brief      HCI LE Set Connectionless CTE Transmit Enable command.
+  *
+  *  \param      advHandle   Identify an advertising set.
+  *  \param      enable      TRUE to enable advertising with CTE, FALSE to disable it.
+  *
+  *  \return     None.
+  */
+/*************************************************************************************************/
+void HciLeConnectionlessCteTxEnableCmd(uint8_t advHandle, bool_t enable)
+{
+  uint8_t *pBuf;
+  uint8_t *p;
+
+  if ((pBuf = hciCmdAlloc(HCI_OPCODE_LE_SET_CONNLESS_CTE_TX_ENABLE,
+                          HCI_LEN_LE_SET_CONLESS_CTE_TX_ENABLE)) != NULL)
+  {
+    p = pBuf + HCI_CMD_HDR_LEN;
+    UINT8_TO_BSTREAM(p, advHandle);
+    UINT8_TO_BSTREAM(p, enable);
+    hciCmdSend(pBuf);
+  }
+}
+
+/*************************************************************************************************/
+/*!
+ *  \brief      HCI LE set Connectionless IQ Sampling Enable command.
+ *
+ *  \param      syncHandle       identify periodic advertising train
+ *  \param      samplingEnable   TRUE to enable Connection IQ sampling, FALSE to disable it.
+ *  \param      slotDurations    Switching and sampling slot durations to be used while receiving CTE.
+ *  \param      maxSampleCte    maximum number of Constant Tone Extensions in each periodic advertising event 
+                                that the Controller should collect and report IQ samples from
+ *  \param      switchPatternLen Number of Antenna IDs in switching pattern.
+ *  \param      pAntennaIDs      List of Antenna IDs in switching pattern.
+ *
+ *  \return     None.
+ */
+/*************************************************************************************************/
+void HciLeSetConlessIQSampleEnCmd(uint16_t syncHandle, uint8_t samplingEnable, uint8_t slotDurations,
+                                uint8_t maxSampleCte,uint8_t switchPatternLen, uint8_t *pAntennaIDs)
+{
+  uint8_t *pBuf;
+  uint8_t *p;
+
+  if ((pBuf = hciCmdAlloc(HCI_OPCODE_LE_SET_CONNLESS_IQ_SAMP_ENABLE,
+                          HCI_LEN_LE_SET_CONLESS_IQ_SAMPLE_EN(switchPatternLen))) != NULL)
+  {
+    p = pBuf + HCI_CMD_HDR_LEN;
+    UINT16_TO_BSTREAM(p, syncHandle);
+    UINT8_TO_BSTREAM(p, samplingEnable);
+    UINT8_TO_BSTREAM(p, slotDurations);
+    UINT8_TO_BSTREAM(p, maxSampleCte);
+    UINT8_TO_BSTREAM(p, switchPatternLen);
+    memcpy(p, pAntennaIDs, switchPatternLen);
+    hciCmdSend(pBuf);
+  }
+}
+

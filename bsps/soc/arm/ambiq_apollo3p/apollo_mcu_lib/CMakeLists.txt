@@ -6,8 +6,11 @@ zephyr_library_sources(
   utils/am_util_delay.c
 )
 
-zephyr_library_sources_ifdef(CONFIG_BLE_COMPONENT 
-  utils/am_util_ble.c
-)
+if (CONFIG_BLE_COMPONENT OR
+    CONFIG_BT)
+  zephyr_library_sources( 
+    utils/am_util_ble.c
+  )
+endif()
 
 

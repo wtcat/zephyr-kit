@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 
-if BOARD_APOLLO3P
+if BOARD_APOLLO3P || BOARD_AMA3B2_EVB
 
 config BOARD
 	default "apollo3p"

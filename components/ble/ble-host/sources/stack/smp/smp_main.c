@@ -37,6 +37,8 @@
 #include "smp_handler.h"
 #include "sec_api.h"
 
+#include "sec_main.h"
+#include "wsf_os_int.h"
 /**************************************************************************************************
   Global Variables
 **************************************************************************************************/
@@ -844,7 +846,16 @@ void SmpHandler(wsfEventMask_t event, wsfMsgHdr_t *pMsg)
         /* if AES result verify it is not stale */
         if (pMsg->event == SMP_MSG_WSF_AES_CMPL && pCcb->token != pMsg->status)
         {
-          SMP_TRACE_WARN2("AES token mismatch: %d %d", pCcb->token, pMsg->status);
+            extern secCb_t secCb;
+            wsfHandlerId_t  handlerId = 0;
+            secQueueBuf_t *pBuf = NULL;
+
+            SMP_TRACE_WARN2("AES token mismatch: %d %d", pCcb->token, pMsg->status);
+
+            while((pBuf=WsfMsgDeq(&secCb.aesEncQueue, &handlerId))!=NULL)
+            {
+                WsfMsgFree(pBuf);
+            }
         }
         else
         {

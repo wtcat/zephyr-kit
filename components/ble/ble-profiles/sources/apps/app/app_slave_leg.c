@@ -329,6 +329,8 @@ void AppSetAdvType(uint8_t advType)
 {
   if (appSlaveAdvMode())
   {
+    /* initialize advertising state */
+    appSlaveCb.advState[DM_ADV_HANDLE_DEFAULT] = APP_ADV_STATE1;
     appSetAdvType(DM_ADV_HANDLE_DEFAULT, advType,
                   pAppAdvCfg->advInterval[appSlaveCb.advState[DM_ADV_HANDLE_DEFAULT]],
                   pAppAdvCfg->advDuration[appSlaveCb.advState[DM_ADV_HANDLE_DEFAULT]], 0, TRUE);

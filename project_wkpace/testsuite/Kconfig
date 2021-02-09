@@ -1,0 +1,20 @@
+# Testsuite
+
+
+menu "Unit Test" 
+config FATFS_TEST
+  bool "FAT filesystem test"
+  depends on FAT_FILESYSTEM_ELM
+  
+config GPIO_TEST
+  bool "GPIO driver test"
+  depends on GPIO
+  
+config LIS2DH_TEST
+  bool "LIS2DH sensor(G-SENSOR) test"
+
+config ADC_TEST
+  bool "ADC test"
+  
+rsource "ble/Kconfig"
+endmenu

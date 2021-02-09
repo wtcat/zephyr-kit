@@ -164,19 +164,17 @@ UINT guix_main(UINT disp_id, struct guix_driver *drv)
     /* Initialize GUIX. */
     gx_system_initialize();
 
-#ifdef CONFIG_GUI_SPLIT_BINRES
     /* Load gui resource */
+#ifdef CONFIG_GUI_SPLIT_BINRES
     ret = guix_binres_load(drv, 0, &theme, &language);
-    if (ret)
-        goto out;
-
-    Main_Screen_theme_default_pixelmap_table = theme->theme_pixelmap_table;
-    Main_Screen_theme_table[0] = theme;
-    guix_smart_watch_display_table[disp_id].theme_table = Main_Screen_theme_table;
-    guix_smart_watch_display_table[disp_id].language_table = 
+    if (ret == GX_SUCCESS) {
+        Main_Screen_theme_default_pixelmap_table = theme->theme_pixelmap_table;
+        Main_Screen_theme_table[0] = theme;
+        guix_smart_watch_display_table[disp_id].theme_table = Main_Screen_theme_table;
+        guix_smart_watch_display_table[disp_id].language_table = 
         (GX_CONST GX_STRING **)language;
-#endif /* CONFIG_GUI_SPLIT_BINRES */
-
+    }
+#endif
     gx_studio_display_configure(MAIN_SCREEN, drv->setup, 
         LANGUAGE_ENGLISH, MAIN_SCREEN_THEME_DEFAULT, &root);
 

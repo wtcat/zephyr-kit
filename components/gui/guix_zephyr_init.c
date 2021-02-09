@@ -6,7 +6,12 @@
 
 #include "gx_api.h"
 
+#define FOREACH_ITEM(_iter, _head) \
+    for (_iter = (_head); _iter != NULL; \
+         _iter = _iter->next)
+
 static struct guix_driver *guix_driver_list;
+static struct gxres_device *guix_resource_dev_list;
 
 UINT __weak guix_main(UINT disp_id, struct guix_driver *drv)
 {
@@ -16,43 +21,92 @@ UINT __weak guix_main(UINT disp_id, struct guix_driver *drv)
     return GX_FAILURE;
 }
 
-#ifdef CONFIG_GUI_SPLIT_BINRES
 UINT guix_binres_load(struct guix_driver *drv, INT theme_id, 
     struct GX_THEME_STRUCT **theme, struct GX_STRING_STRUCT ***language)
 {
-    UINT ret;
+    UINT ret = GX_SUCCESS;
+    if (!drv || drv->map_base == INVALID_MAP_ADDR)
+        return GX_FAILURE;
     
     /* Load gui resource */
-    ret = gx_binres_language_table_load_ext(drv->map_base, language);
-    if (ret != GX_SUCCESS) {
-        printk("%s load gui language resource failed\n", __func__);
-        goto out;
+    if (language) {
+        ret = gx_binres_language_table_load_ext(drv->map_base, language);
+        if (ret != GX_SUCCESS) {
+            printk("%s load gui language resource failed\n", __func__);
+            goto out;
+        }
     }
 	
-    ret = gx_binres_theme_load(drv->map_base, theme_id, theme);
-    if (ret != GX_SUCCESS) {
-        printk("%s load gui theme resource failed\n", __func__);
-        goto out;
+    if (theme) {
+        ret = gx_binres_theme_load(drv->map_base, theme_id, theme);
+        if (ret != GX_SUCCESS) {
+            printk("%s load gui theme resource failed\n", __func__);
+            goto out;
+        }
     }
-
 out:
     return ret;
 }
-#endif
+
+static void *gxres_mmap_null(size_t size)
+{
+    (void) size;
+    return INVALID_MAP_ADDR;
+}
+
+static void gxres_unmap_null(void *ptr)
+{
+    (void) ptr;
+}
+
+static struct gxres_device gxres_null_device = {
+    .dev_name = "null",
+    .link_id = -1,
+    .mmap = gxres_mmap_null,
+    .unmap = gxres_unmap_null
+};
+
+static bool guix_attach_devres(struct guix_driver *drv)
+{
+    struct gxres_device *iter;
+    
+    FOREACH_ITEM(iter, guix_resource_dev_list) {
+        if (drv->id == iter->link_id) {
+            drv->dev = iter;
+            return true;
+        }
+    }
+    drv->dev = &gxres_null_device;
+    return false;
+}
+
+int gxres_device_register(struct gxres_device *dev)
+{
+    struct gxres_device *iter;
+
+    if (!dev || !dev->mmap || !dev->unmap)
+        return -EINVAL;
+
+    FOREACH_ITEM(iter, guix_resource_dev_list) {
+        if (iter->link_id == dev->link_id)
+            return -EEXIST;
+    }
+    dev->next = guix_resource_dev_list;
+    guix_resource_dev_list = dev;
+    return 0;
+}
 
 int guix_driver_register(struct guix_driver *drv)
 {
-    struct guix_driver *iter = guix_driver_list;
+    struct guix_driver *iter;
     
     if (!drv || !drv->setup)
         return -EINVAL;
 
-    while (iter) {
+    FOREACH_ITEM(iter, guix_driver_list) {
         if (iter->id == drv->id)
             return -EEXIST;
-        iter = iter->next;
     }
-
     drv->next = guix_driver_list;
     guix_driver_list = drv;
     return 0;
@@ -60,31 +114,24 @@ int guix_driver_register(struct guix_driver *drv)
 
 static int guix_initialize(const struct device *dev __unused)
 {
-    struct guix_driver *drv = guix_driver_list;
+    struct guix_driver *drv;
     int ret = -EINVAL;
     
-    if (!drv)
-        return -EINVAL;
-
-    for (; drv; drv = drv->next) {
-    #ifdef CONFIG_GUI_SPLIT_BINRES
-        drv->mmap();
-    #endif
+    FOREACH_ITEM(drv, guix_driver_list) {
+        if (!guix_attach_devres(drv))
+            printk("%s(): No found guix resource device\n", __func__);
+        
+        drv->map_base = guix_resource_map(drv, ~0u);
         ret = (int)guix_main(drv->id, drv);
         if (ret) {
-        #ifdef CONFIG_GUI_SPLIT_BINRES
-            drv->unmap();
-        #endif
+            guix_resource_unmap(drv, NULL);
             break;
         }
-    #ifdef CONFIG_GUI_SPLIT_BINRES
-        drv->unmap();
-    #endif
+        guix_resource_unmap(drv, NULL);
     }
     return ret;
 }
 
 SYS_INIT(guix_initialize, APPLICATION,
 	CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);
-
 

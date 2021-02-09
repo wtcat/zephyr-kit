@@ -10,13 +10,22 @@ list(APPEND SOC_ROOT   ${BSP_ROOT})
 list(APPEND DTS_ROOT   ${BSP_ROOT})
 
 #Application modules(For userspace)
-#list(APPEND ZEPHYR_EXTRA_MODULES 
-#    ${APP_ROOT}/gui
-#)
+list(APPEND ZEPHYR_EXTRA_MODULES 
+    ${APP_ROOT}/gui
+)
+
+list(APPEND ZEPHYR_EXTRA_MODULES 
+    ${BSP_ROOT}/subsys
+)
+
+list(APPEND ZEPHYR_EXTRA_MODULES 
+    ${APP_ROOT}/testsuite
+)
 
 # Base modules
 list(APPEND ZEPHYR_EXTRA_MODULES 
     ${BSP_ROOT}/drivers
+    ${BSP_ROOT}/drivers_ext
     ${COMPONENTS_ROOT}
 )
 
@@ -60,3 +69,11 @@ if (EXISTS ${MODULES_ROOT}/loramac-node)
 list(APPEND ZEPHYR_EXTRA_MODULES 
     ${MODULES_ROOT}/loramac-node)
 endif()
+
+if (EXISTS ${MODULES_ROOT}/tinycrypt)
+list(APPEND ZEPHYR_EXTRA_MODULES 
+    ${MODULES_ROOT}/tinycrypt)
+endif()
+
+# add syscall generate for private drv 
+#list(APPEND SYSCALL_INCLUDE_DIRS ${BSP_ROOT}/include/drivers_ext)

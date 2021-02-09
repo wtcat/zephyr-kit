@@ -8,11 +8,15 @@ menuconfig APOLLO3P_DEVICE
 
 if APOLLO3P_DEVICE
 
+rsource "adc/Kconfig"
 rsource "serial/Kconfig"
 rsource "gpio/Kconfig"
 rsource "i2c/Kconfig"
 rsource "misc/Kconfig"
 rsource "spi/Kconfig"
 rsource "flash/Kconfig"
+rsource "bluetooth/Kconfig"
+rsource "timer/Kconfig"
+rsource "display/Kconfig"
 
 endif #APOLLO3P_DEVICE

@@ -168,7 +168,7 @@ void hciCmdInit(void)
 /*************************************************************************************************/
 void hciCmdTimeout(wsfMsgHdr_t *pMsg)
 {
-  HCI_TRACE_INFO0("hciCmdTimeout");
+  HCI_TRACE_INFO1("hciCmdTimeout, opcode=0x%x", hciCmdCb.cmdOpcode);
   // When it times out, pretty much we have to
   // reset/reboot controller and initialize HCI
   // layer and SPI transport layer again.
@@ -1600,6 +1600,69 @@ void HciLeTestEndCmd(void)
   {
     hciCmdSend(pBuf);
   }
+}
+
+
+/*************************************************************************************************/
+/*!
+ *  \fn         HciLeReceiverTestCmdV3
+ *
+ *  \brief      HCI LE Receiver test command[V3].
+ *
+ *  \param      hciLeRxTestV3Cmd_t      
+ *  \return     None.
+ */
+/*************************************************************************************************/
+void HciLeReceiverTestCmdV3(hciLeRxTestV3Cmd_t *rx_test_v3)
+{
+    uint8_t *pBuf;
+    uint8_t *p;
+
+    if ((pBuf = hciCmdAlloc(HCI_OPCODE_LE_RECEIVER_TEST_V3, HCI_LEN_LE_RECEIVER_TEST_V3)) != NULL)
+    {
+        p = pBuf + HCI_CMD_HDR_LEN;
+        UINT8_TO_BSTREAM(p, rx_test_v3->rx_channel);
+        UINT8_TO_BSTREAM(p, rx_test_v3->phy);
+        UINT8_TO_BSTREAM(p, rx_test_v3->mod_idx);
+        UINT8_TO_BSTREAM(p, rx_test_v3->exp_cte_len);
+        UINT8_TO_BSTREAM(p, rx_test_v3->exp_cte_type);
+        UINT8_TO_BSTREAM(p, rx_test_v3->slot_dur);
+        UINT8_TO_BSTREAM(p, rx_test_v3->switching_pattern_len);
+        memcpy(p, rx_test_v3->antenna_id, MAX_SWITCHING_PATTERN_LEN);
+        
+        hciCmdSend(pBuf);
+    }
+}
+
+/*************************************************************************************************/
+/*!
+ *  \fn         HciLeTransmitterTestCmdV3
+ *
+ *  \brief      HCI LE transmitter test command[V3].
+ *
+ *  \param      hciLeTxTestV3Cmd_t      
+ *  \return     None.
+ */
+/*************************************************************************************************/
+void HciLeTransmitterTestCmdV3(hciLeTxTestV3Cmd_t *tx_test_v3)
+{
+    uint8_t *pBuf;
+    uint8_t *p;
+
+    if ((pBuf = hciCmdAlloc(HCI_OPCODE_LE_TRANSMITTER_TEST_V3, HCI_LEN_LE_TRANSMITTER_TEST_V3)) != NULL)
+    {
+        p = pBuf + HCI_CMD_HDR_LEN;
+        UINT8_TO_BSTREAM(p, tx_test_v3->tx_channel);
+        UINT8_TO_BSTREAM(p, tx_test_v3->test_data_len);
+        UINT8_TO_BSTREAM(p, tx_test_v3->pkt_payl);
+        UINT8_TO_BSTREAM(p, tx_test_v3->phy);
+        UINT8_TO_BSTREAM(p, tx_test_v3->cte_len);
+        UINT8_TO_BSTREAM(p, tx_test_v3->cte_type);
+        UINT8_TO_BSTREAM(p, tx_test_v3->switching_pattern_len);
+        memcpy(p, tx_test_v3->antenna_id, MAX_SWITCHING_PATTERN_LEN);
+        
+        hciCmdSend(pBuf);
+    }
 }
 
 /*************************************************************************************************/

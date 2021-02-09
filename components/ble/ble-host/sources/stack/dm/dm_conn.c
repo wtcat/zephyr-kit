@@ -1389,7 +1389,7 @@ dmConnId_t DmConnIdByHandle(uint16_t handle)
     }
   }
 
-  DM_TRACE_WARN1("DmConnIdByHandle not found 0x%04x", handle);
+  // DM_TRACE_WARN1("DmConnIdByHandle not found 0x%04x", handle);
 
   return DM_CONN_ID_NONE;
 }

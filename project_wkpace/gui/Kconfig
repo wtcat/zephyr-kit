@@ -1,0 +1,4 @@
+menuconfig WATCH_FACE_TEST
+	bool "watch face test"
+	help
+	  Enable options for watch face test.

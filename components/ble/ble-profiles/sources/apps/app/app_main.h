@@ -132,6 +132,15 @@ typedef struct
   wsfTimer_t        updateTimer;                                            /*! Connection parameter update timer */
 } appConnCb_t;
 
+/*! extended connection control block */
+typedef struct
+{
+    bool_t            used;
+
+    uint8_t           connHandle;  /*! Connection handle from connection complete event*/
+    uint8_t           advHandle;   /*! advertising activity id for the connection*/
+}appExtConnCb_t;
+
 /*! Main control block */
 typedef struct
 {

@@ -163,7 +163,7 @@ static void dmExtAdvCbInit(uint8_t advHandle)
 {
   /* initialize advertising set */
   dmExtAdvCb[advHandle].advType = DM_ADV_NONE;
-  dmExtAdvCb[advHandle].useLegacyPdu = TRUE;
+  dmExtAdvCb[advHandle].useLegacyPdu = FALSE;
   dmExtAdvCb[advHandle].omitAdvAddr = FALSE;
   dmExtAdvCb[advHandle].incTxPwr = FALSE;
   dmExtAdvCb[advHandle].advTxPwr = HCI_TX_PWR_NO_PREFERENCE;

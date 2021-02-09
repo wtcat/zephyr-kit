@@ -8,7 +8,7 @@
 
 //*****************************************************************************
 //
-// Copyright (c) 2020, Ambiq Micro
+// Copyright (c) 2020, Ambiq Micro, Inc.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -40,7 +40,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// This is part of revision 2.4.2 of the AmbiqSuite Development Package.
+// This is part of revision 2.5.1 of the AmbiqSuite Development Package.
 //
 //*****************************************************************************
 #ifndef HCI_DRV_APOLLO3_H
@@ -56,16 +56,21 @@
 // Tx power level in dBm.
 typedef enum
 {
-  TX_POWER_LEVEL_MINUS_10P0_dBm = 0x3,
-  TX_POWER_LEVEL_0P0_dBm = 0x8,
-  TX_POWER_LEVEL_PLUS_3P0_dBm = 0xF,
-  TX_POWER_LEVEL_INVALID = 0x10,
+  TX_POWER_LEVEL_MINUS_10P0_dBm = 0x0,
+  TX_POWER_LEVEL_0P0_dBm,
+  TX_POWER_LEVEL_PLUS_3P0_dBm,
+  TX_POWER_LEVEL_MAX_VAL,
 }txPowerLevel_t;
 
 
-bool_t HciVsA3_SetRfPowerLevelEx(txPowerLevel_t txPowerlevel);
-void   HciVsA3_ConstantTransmission(uint8_t txchannel);
-void   HciVsA3_CarrierWaveMode(uint8_t txchannel);
+bool_t HciVscSetRfPowerLevelEx(txPowerLevel_t txPowerlevel);
+#define HciVsA3_SetRfPowerLevelEx HciVscSetRfPowerLevelEx
+void   HciVscConstantTransmission(uint8_t txchannel);
+#define HciVsA3_ConstantTransmission HciVscConstantTransmission
+void   HciVscCarrierWaveMode(uint8_t txchannel);
+#define HciVsA3_CarrierWaveMode HciVscCarrierWaveMode
+bool_t HciVscSetCustom_BDAddr(uint8_t *bd_addr);
+extern void HciVscUpdateBDAddress(void);
 
 //*****************************************************************************
 //

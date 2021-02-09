@@ -76,11 +76,12 @@ void AtpcCteDiscover(dmConnId_t connId, uint16_t *pHdlList);
  *  \param  connId    Connection identifier.
  *  \param  handle    Attribute handle.
  *  \param  enable    Enable.
+ *  \param  cteType   CTE Type.
  *
  *  \return None.
  */
 /*************************************************************************************************/
-void AtpcCteWriteEnable(dmConnId_t connId, uint16_t handle, uint8_t enable);
+void AtpcCteWriteEnable(dmConnId_t connId, uint16_t handle, uint8_t enable, uint8_t cteType);
 
 /*************************************************************************************************/
 /*!
@@ -172,7 +173,7 @@ void AtpcSetAntennaIds(dmConnId_t connId, uint8_t numAntenna, uint8_t *pAntennaI
  *  \return None.
  */
 /*************************************************************************************************/
-void AtpcCteAclEnableReq(dmConnId_t connId, uint16_t handle, uint8_t length, uint16_t interval);
+void AtpcCteAclEnableReq(dmConnId_t connId, uint16_t handle, uint8_t length, uint16_t interval,uint8_t cteType);
 
 /*************************************************************************************************/
 /*!

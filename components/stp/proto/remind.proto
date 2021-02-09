@@ -1,0 +1,30 @@
+syntax = "proto2";
+package remind;
+
+//SPEED/CODE_SIZE/LITE_RUNTIME
+option optimize_for=SPEED;
+
+message Call {
+    required fixed32 timestamp = 1; //Time Stamp
+    required string phone = 2; //Phone number
+    optional string people = 3; //Contact name
+}
+
+message Message {
+    required fixed32 timestamp = 1; //Time Stamp
+    enum Type {
+        TEXT      = 0; /* Text message */
+        FACEBOOK  = 1; /* Facebook message */
+        WECHAT    = 2;
+        QQ        = 3;
+    }
+    required Type type = 2 [default = TEXT];
+    required string phone = 3; //Phone number
+    required string text = 4;  //Message text
+    optional string people = 5; //Contact name
+}
+
+message Battery {
+    required uint32 percent = 1; //Low power threshold
+}
+

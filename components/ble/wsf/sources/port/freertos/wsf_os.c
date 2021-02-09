@@ -420,7 +420,14 @@ void wsfOsDispatcher(void)
       }
     }
   }
-  xEventGroupWaitBits(xRadioTaskEventObject, 1, pdTRUE,
+
+  WsfTimerUpdateTicks();
+
+  if (wsfOsReadyToSleep())
+  {
+    xEventGroupWaitBits(xRadioTaskEventObject, 1, pdTRUE,
                       pdFALSE, portMAX_DELAY);
+  }
+
 }
 

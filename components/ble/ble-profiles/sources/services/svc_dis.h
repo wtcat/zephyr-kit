@@ -105,7 +105,7 @@ Macros
 #endif
 
 #ifndef DIS_SIZE_SID_ATT
-#define DIS_SIZE_SID_ATT            12   /*!< \brief Size of system id attribute */
+#define DIS_SIZE_SID_ATT            8   /*!< \brief Size of system id attribute */
 #endif
 
 #ifndef DIS_SIZE_RCD_ATT

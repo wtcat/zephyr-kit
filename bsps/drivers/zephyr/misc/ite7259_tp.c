@@ -3,22 +3,35 @@
 #include <init.h>
 #include <drivers/i2c.h>
 #include <drivers/gpio.h>
+#include <sys/atomic.h>
+#include <sys/__assert.h>
+#include <logging/log.h>
+
 #include <soc.h>
 
 #include "i2c/i2c-message.h"
 
+#ifdef CONFIG_GUI_GPIO_KEY
+#include "apollo3p_gpio_keys.h"
+#endif
 
 #ifdef CONFIG_GUIX
 #include "gx_api.h"
 #include "gx_system.h"
 #endif
 
+LOG_MODULE_REGISTER(tp);
+
 //#define DEBUG_ITE7259
-//#define CONFIG_GUI_GPIO_KEY
 
 #define BUS_DEV "I2C_2"
 #define GPIO_DEV "GPIO_1"
 
+/*
+ * Input event type
+ */
+#define INPUT_TP_EVENT   0x01
+#define INPUT_KEY_EVENT 0x02
 
 /* 
  * ITE7259 commands
@@ -40,12 +53,18 @@ typedef struct _GX_POINT {
 } GX_POINT;
 #endif
 
+struct input_evt {
+	struct k_poll_event poll_event;
+	struct k_poll_signal poll_signal;
+	atomic_t event;
+};
+
 struct ite7259_private {
+	struct input_evt evt;
     struct gpio_callback cb;
     const struct device *i2c;
     const struct device *gpio;
     struct k_thread *thread;
-    struct k_sem sync;
     uint16_t addr;
     uint16_t pin_rst;
     uint16_t pin_int;
@@ -63,6 +82,7 @@ struct ite7259_private {
 
 static K_KERNEL_STACK_DEFINE(tp_stack, 2048);
 static struct k_thread tp_thread;
+
 
 static struct ite7259_private k_touch = {
     .addr = 0x46,
@@ -135,12 +155,37 @@ static void touch_event_send(struct ite7259_private *touch,
         touch_up_event_send(event, touch);
     }
 }
-
-    
 #else /* !CONFIG_GUIX */
-
 #define touch_event_send(...)
 #endif /* CONFIG_GUIX */
+
+static void input_evt_init(struct input_evt *evt)
+{
+	k_poll_signal_init(&evt->poll_signal);
+	k_poll_event_init(&evt->poll_event, K_POLL_TYPE_SIGNAL,
+			  K_POLL_MODE_NOTIFY_ONLY, &evt->poll_signal);
+	atomic_set(&evt->event, 0);
+}
+
+static void input_evt_post(struct input_evt *evt, int event)
+{
+	atomic_or(&evt->event, event);
+	k_poll_signal_raise(&evt->poll_signal, 0);
+}
+
+static int input_evt_wait(struct input_evt *evt, uint32_t *event)
+{
+	int ret;
+	__ASSERT(event != NULL, "Invalid input parameters");
+	ret = k_poll(&evt->poll_event, 1, K_FOREVER);
+	if (ret < 0)
+		return ret;
+
+	evt->poll_signal.signaled = 0;
+	evt->poll_signal.result = 0;
+	*event = (uint32_t)atomic_and(&evt->event, 0);
+	return 0;
+}
 
 static inline void ite7259_set_regsize(struct ite7259_private *priv, 
     uint16_t size)
@@ -188,14 +233,15 @@ static void ite7259_reset(struct ite7259_private *priv)
     k_busy_wait(200 * 1000);
 }
 
-
 static void ite7259_gpio_isr(const struct device *dev, struct gpio_callback *cb,
     gpio_port_pins_t pins)
 {
-    struct ite7259_private *priv = CONTAINER_OF(cb, struct ite7259_private, cb);
-    k_sem_give(&priv->sync);
-    (void) dev;
-    (void) pins;
+    struct ite7259_private *priv;
+	
+    ARG_UNUSED(dev);
+    ARG_UNUSED(pins);
+    priv = CONTAINER_OF(cb, struct ite7259_private, cb);
+    input_evt_post(&priv->evt, INPUT_TP_EVENT);
 }
 
 static bool ite7259_data_ready(struct ite7259_private *priv)
@@ -225,8 +271,8 @@ static void touch_daemon_thread(void *p1, void *p2, void *p3)
     struct ite7259_private *priv = (struct ite7259_private *)p1;
     GX_POINT *current = &priv->current;
     uint8_t buf[ITE7259_POINT_SIZE];
-    int ret;
-    int state;
+	uint32_t event_out;
+    int state, ret;
 #ifdef DEBUG_ITE7259
     const char *state_string;
 #endif
@@ -241,9 +287,14 @@ static void touch_daemon_thread(void *p1, void *p2, void *p3)
 #endif
 
     for ( ; ; ) {
-		k_sem_take(&priv->sync, K_FOREVER);
+		ret = input_evt_wait(&priv->evt, &event_out);
+		if (ret) {
+			LOG_WRN("Wait event failed with error %d\n", ret);
+			continue;
+	    }
+		//k_sem_take(&priv->sync, K_FOREVER);
 #ifdef CONFIG_GUI_GPIO_KEY
-        if (event_out & KEY_INPUT_EVENT) {
+        if (event_out & INPUT_KEY_EVENT) {
             struct key_value value;
             while (!dequeue_gpio_key(&value)) {
                 if (value.value == KEY_ACTION_CLICK) {
@@ -253,6 +304,8 @@ static void touch_daemon_thread(void *p1, void *p2, void *p3)
             }
         }
 #endif
+		if (!(event_out & INPUT_TP_EVENT))
+			continue;
 
         if (!ite7259_data_ready(priv)) {
 #ifdef CONFIG_GUIX
@@ -353,7 +406,7 @@ static int ite7259_setup(struct ite7259_private *priv)
         goto out;
     }
     
-    k_sem_init(&priv->sync, 0, 1);
+    input_evt_init(&priv->evt);
     gpio_init_callback(&priv->cb, ite7259_gpio_isr, BIT(priv->pin_int));
     gpio_add_callback(priv->gpio, &priv->cb);
     ret = gpio_pin_interrupt_configure(priv->gpio, priv->pin_int, 
@@ -368,8 +421,7 @@ out:
 static void gpio_key_notifier(void *context)
 {
     struct ite7259_private *priv = context;
-    if (priv->thread)
-        k_sem_give(&priv->sync);
+    input_evt_post(&priv->evt, INPUT_KEY_EVENT);
 }
 #endif /* CONFIG_GUIX */
 
@@ -383,7 +435,6 @@ static int ite7259_driver_init(const struct device *dev __unused)
         printk("%s touch pannel intialize failed\n", __func__);
         return -EINVAL;
     }
-	
     priv->thread = k_thread_create(&tp_thread,
                               tp_stack,
                               K_KERNEL_STACK_SIZEOF(tp_stack),
@@ -400,5 +451,4 @@ static int ite7259_driver_init(const struct device *dev __unused)
 
 SYS_INIT(ite7259_driver_init, POST_KERNEL, 
     CONFIG_KERNEL_INIT_PRIORITY_DEVICE+5);
-
  

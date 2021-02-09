@@ -146,7 +146,33 @@ INT                shift;
                     stackptr++;
                 }
 
-                _gx_animation_drag_tracking_start(animation, event_ptr -> gx_event_payload.gx_event_pointdata);
+                if (animation->gx_animation_info.gx_animation_range_limit_type == GX_ANIMATION_LIMIT_STYLE_NONE) {
+                    _gx_animation_drag_tracking_start(animation, event_ptr->gx_event_payload.gx_event_pointdata);
+                }
+                else if (animation->gx_animation_info.gx_animation_range_limit_type == GX_ANIMATION_LIMIT_STYLE_VERTICAL_DOWN) {
+                    if (animation->gx_animation_info.gx_animation_slide_screen_list[0]->gx_widget_status & GX_STATUS_VISIBLE){
+                        if (event_ptr->gx_event_payload.gx_event_pointdata.gx_point_y > animation->gx_animation_slide_tracking_start_pos) {
+                            _gx_animation_drag_tracking_start(animation, event_ptr->gx_event_payload.gx_event_pointdata);
+                        }
+                    }
+                    if (animation->gx_animation_info.gx_animation_slide_screen_list[1]->gx_widget_status & GX_STATUS_VISIBLE) {
+                        if (event_ptr->gx_event_payload.gx_event_pointdata.gx_point_y < animation->gx_animation_slide_tracking_start_pos) {
+                            _gx_animation_drag_tracking_start(animation, event_ptr->gx_event_payload.gx_event_pointdata);
+                        }
+                    }
+                }
+                else if (animation->gx_animation_info.gx_animation_range_limit_type == GX_ANIMATION_LIMIT_STYLE_VERTICAL_UP) {
+                    if (animation->gx_animation_info.gx_animation_slide_screen_list[0]->gx_widget_status & GX_STATUS_VISIBLE) {
+                        if (event_ptr->gx_event_payload.gx_event_pointdata.gx_point_y < animation->gx_animation_slide_tracking_start_pos) {
+                            _gx_animation_drag_tracking_start(animation, event_ptr->gx_event_payload.gx_event_pointdata);
+                        }
+                    }
+                    if (animation->gx_animation_info.gx_animation_slide_screen_list[1]->gx_widget_status & GX_STATUS_VISIBLE) {
+                        if (event_ptr->gx_event_payload.gx_event_pointdata.gx_point_y > animation->gx_animation_slide_tracking_start_pos) {
+                            _gx_animation_drag_tracking_start(animation, event_ptr->gx_event_payload.gx_event_pointdata);
+                        }
+                    }
+                }            
             }
 
              _gx_animation_drag_tracking(animation, event_ptr -> gx_event_payload.gx_event_pointdata);
@@ -171,35 +197,61 @@ INT                shift;
                 shift = (size -> gx_rectangle_right - size -> gx_rectangle_left + 1) >> 1;
             }
 
-            if ((abs(delta) < shift) || (animation -> gx_animation_slide_target_index_2 == -1))
+            if (animation->gx_animation_info.gx_animation_range_limit_type == GX_ANIMATION_LIMIT_STYLE_NONE)
             {
-                /* slide back to original when slide distance is less than half screen width/height. */
-                if (animation -> gx_animation_slide_target_index_2 >= 0)
+                if ((abs(delta) < shift) || (animation -> gx_animation_slide_target_index_2 == -1))
                 {
+                    /* slide back to original when slide distance is less than half screen width/height. */
+                    if (animation -> gx_animation_slide_target_index_2 >= 0)
+                    {
+                        temp = animation -> gx_animation_slide_target_index_1;
+                        animation -> gx_animation_slide_target_index_1 = animation -> gx_animation_slide_target_index_2;
+                        animation -> gx_animation_slide_target_index_2 = (GX_VALUE)temp;
+                    }
+
+                    switch (animation -> gx_animation_slide_direction)
+                    {
+                    case GX_ANIMATION_SLIDE_LEFT:
+                        animation -> gx_animation_slide_direction = GX_ANIMATION_SLIDE_RIGHT;
+                        break;
+
+                    case GX_ANIMATION_SLIDE_RIGHT:
+                        animation -> gx_animation_slide_direction = GX_ANIMATION_SLIDE_LEFT;
+                        break;
+
+                    case GX_ANIMATION_SLIDE_UP:
+                        animation -> gx_animation_slide_direction = GX_ANIMATION_SLIDE_DOWN;
+                        break;
+
+                    case GX_ANIMATION_SLIDE_DOWN:
+                        animation -> gx_animation_slide_direction = GX_ANIMATION_SLIDE_UP;
+                        break;
+                    }
+                }
+            } else {
+
+                if (abs(delta) < shift) {
                     temp = animation -> gx_animation_slide_target_index_1;
                     animation -> gx_animation_slide_target_index_1 = animation -> gx_animation_slide_target_index_2;
                     animation -> gx_animation_slide_target_index_2 = (GX_VALUE)temp;
-                }
+                } 
 
-                switch (animation -> gx_animation_slide_direction)
-                {
-                case GX_ANIMATION_SLIDE_LEFT:
-                    animation -> gx_animation_slide_direction = GX_ANIMATION_SLIDE_RIGHT;
-                    break;
-
-                case GX_ANIMATION_SLIDE_RIGHT:
-                    animation -> gx_animation_slide_direction = GX_ANIMATION_SLIDE_LEFT;
-                    break;
-
-                case GX_ANIMATION_SLIDE_UP:
-                    animation -> gx_animation_slide_direction = GX_ANIMATION_SLIDE_DOWN;
-                    break;
-
-                case GX_ANIMATION_SLIDE_DOWN:
-                    animation -> gx_animation_slide_direction = GX_ANIMATION_SLIDE_UP;
-                    break;
+                if (animation->gx_animation_info.gx_animation_range_limit_type == GX_ANIMATION_LIMIT_STYLE_VERTICAL_DOWN) {
+                    if (animation -> gx_animation_slide_target_index_2 == 0){
+                        animation -> gx_animation_slide_direction = GX_ANIMATION_SLIDE_UP;
+                    } else {
+                        animation -> gx_animation_slide_direction = GX_ANIMATION_SLIDE_DOWN;
+                    }
+                    
+                } else if (animation->gx_animation_info.gx_animation_range_limit_type == GX_ANIMATION_LIMIT_STYLE_VERTICAL_UP) {
+                    if (animation -> gx_animation_slide_target_index_2 == 0){
+                        animation -> gx_animation_slide_direction = GX_ANIMATION_SLIDE_DOWN;
+                    } else {
+                        animation -> gx_animation_slide_direction = GX_ANIMATION_SLIDE_UP;
+                    }
                 }
             }
+            
 
             if (delta)
             {

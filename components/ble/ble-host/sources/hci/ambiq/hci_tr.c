@@ -101,7 +101,7 @@ void hciTrSendAclData(void *pContext, uint8_t *pData)
 /*************************************************************************************************/
 void hciTrSendCmd(uint8_t *pData)
 {
-  uint8_t   len;
+  uint16_t   len;  // in case like LE set periodic advertising data, the maximum HCI command parameter length is 255
 
   /* get length */
   len = pData[2] + HCI_CMD_HDR_LEN;

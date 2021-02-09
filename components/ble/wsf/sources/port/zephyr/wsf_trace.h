@@ -35,7 +35,7 @@ typedef void (*WsfTokenHandler_t)(void);
   Function Prototypes
 **************************************************************************************************/
 
-#define WsfTrace(pStr, ...) printk(pStr, ##__VA_ARGS__)
+#define WsfTrace(pStr, ...) {printk(pStr, ##__VA_ARGS__);printk("\n");}
 //void WsfTrace(const char *pStr, ...);
 void WsfToken(uint32_t tok, uint32_t var);
 void WsfPacketTrace(uint8_t ui8Type, uint32_t ui32Len, uint8_t *pui8Buf);
@@ -47,13 +47,16 @@ uint8_t WsfTokenIOWrite(uint8_t *pBuf, uint8_t len);
 /**************************************************************************************************
   Macros
 **************************************************************************************************/
+/*
 #ifdef WSF_TRACE_ENABLED
 #ifndef AM_DEBUG_PRINTF
 #undef WSF_TRACE_ENABLED
 #warning "AM_DEBUG_PRINTF is needed when WSF_TRACE_ENABLED is defined"
 #endif
 #endif
+*/
 
+#define WSF_TRACE_ENABLED TRUE
 
 #ifdef TOKEN_GENERATION
 

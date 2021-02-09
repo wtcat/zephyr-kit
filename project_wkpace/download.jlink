@@ -1,0 +1,6 @@
+r
+h
+erase
+loadbin apollo3p_image.bin 0xC000
+r
+qc

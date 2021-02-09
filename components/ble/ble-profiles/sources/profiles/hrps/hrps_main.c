@@ -34,7 +34,7 @@
 #include "app_api.h"
 #include "app_hw.h"
 #include "hrps_api.h"
-#include "srv_g_hr.h"
+
 /**************************************************************************************************
   Local Variables
 **************************************************************************************************/
@@ -234,25 +234,18 @@ static uint8_t hrpsBuildHrm(dmConnId_t connId, uint8_t **pBuf, appHrm_t *pHrm)
 /*************************************************************************************************/
 static void hrpsSendHrmNtf(dmConnId_t connId)
 {
-  // uint8_t *pBuf;
-  // uint8_t len;
+  uint8_t *pBuf;
+  uint8_t len;
 
-  // /* Build heart rate measurement characteristic */
-  // if ((len = hrpsBuildHrm(connId, &pBuf, &hrpsCb.hrm)) > 0)
-  // {
-  //   /* Send notification */
-  //   AttsHandleValueNtf(connId, HRS_HRM_HDL, len, pBuf);
+  /* Build heart rate measurement characteristic */
+  if ((len = hrpsBuildHrm(connId, &pBuf, &hrpsCb.hrm)) > 0)
+  {
+    /* Send notification */
+    AttsHandleValueNtf(connId, HRS_HRM_HDL, len, pBuf);
 
-  //   /* Free allocated buffer */
-  //   WsfBufFree(pBuf);
-  // }
-
-  uint8_t pBuf[2];
-  uint16_t hr_data = srv_get_hr_data();
-  pBuf[0] = hr_data >> 8;
-  pBuf[1] = hr_data;
-  /* Send notification */
-  AttsHandleValueNtf(connId, HRS_HRM_HDL, sizeof(pBuf), pBuf);
+    /* Free allocated buffer */
+    WsfBufFree(pBuf);
+  }
 }
 
 /*************************************************************************************************/
@@ -319,7 +312,6 @@ void hrpsMeasTimerExp(wsfMsgHdr_t *pMsg)
 
     /* read heart rate measurement sensor data */
     AppHwHrmRead(&hrpsCb.hrm);
-		
 
     /* if ready to send measurements */
     if (hrpsCb.txReady)

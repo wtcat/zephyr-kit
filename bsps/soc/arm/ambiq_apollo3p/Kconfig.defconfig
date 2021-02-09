@@ -5,3 +5,12 @@ config SOC
 
 config NUM_IRQS
 	default 34
+
+config APOLLO3_STIMER
+	default y
+
+config CORTEX_M_SYSTICK
+	default n
+
+config FLASH_LOAD_OFFSET
+	default 0xc000 if !USE_DT_CODE_PARTITION

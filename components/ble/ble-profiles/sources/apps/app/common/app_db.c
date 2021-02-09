@@ -23,6 +23,7 @@
 /*************************************************************************************************/
 
 #include <string.h>
+#include "am_mcu_apollo.h"
 #include "wsf_types.h"
 #include "wsf_assert.h"
 #include "util/bda.h"
@@ -91,6 +92,135 @@ static appDb_t appDb;
 /*! When all records are allocated use this index to determine which to overwrite */
 static appDbRec_t *pAppDbNewRec = appDb.rec;
 
+
+//
+// Copy Record list from NVM into the active record list, if any
+//
+//
+appDbRec_t * pRecListNvmPointer = (appDbRec_t *)0x00070000; //temporarily put the data here
+
+void AppCopyRecListInNvm(appDbRec_t *pRecord)
+{
+    appDbRec_t* pNvmRec =  pRecListNvmPointer;
+    uint8_t i;
+    for(i=0;i<APP_DB_NUM_RECS;i++)
+    {
+        if(((*(uint32_t*)(pNvmRec->peerAddr) != 0xFFFFFFFF))&&(*(uint32_t*)(pRecListNvmPointer->peerAddr) != 0x00000000))
+        {
+            //valid record in NVM
+            memcpy(pRecord, pNvmRec, sizeof(appDbRec_t));
+
+            //pRecord->inUse = FALSE;
+            //pRecord->valid = TRUE;
+
+            pNvmRec++;
+            pRecord++;
+        }
+        else
+        {
+            break;
+        }
+    }
+}
+// sizeof(appDbRec_t) = 176 bytes of buffer
+uint8_t ui8DbRamBuffer[APP_DB_NUM_RECS * sizeof(appDbRec_t)];
+uint16_t ui16DbRamBufferSize = APP_DB_NUM_RECS * sizeof(appDbRec_t);
+
+static void updateRecordInNVM(uint32_t* pDest, uint32_t* pSrc, uint32_t* pFlashAddr)
+{
+    uint16_t ui16Size = sizeof(appDbRec_t);
+
+    // read the flash out
+    memcpy(ui8DbRamBuffer, pFlashAddr, ui16DbRamBufferSize);
+    // update the record
+    memcpy((uint8_t *)pDest, (uint8_t *)pSrc, ui16Size);
+
+    uint32_t ui32Critical = am_hal_interrupt_master_disable();
+#if defined(AM_PART_APOLLO4) || defined(AM_PART_APOLLO4B)
+    am_hal_mram_main_program(AM_HAL_MRAM_PROGRAM_KEY,
+                              (uint32_t *)ui8DbRamBuffer,
+                              (uint32_t *)pFlashAddr,
+                              ui16DbRamBufferSize%4?((ui16DbRamBufferSize/4) + 1):(ui16DbRamBufferSize/4));
+#else
+    // erase the page
+    uint32_t ui32CurrentPage =  AM_HAL_FLASH_ADDR2PAGE((uint32_t)pFlashAddr);
+    uint32_t ui32CurrentBlock = AM_HAL_FLASH_ADDR2INST((uint32_t)pFlashAddr);
+
+    am_hal_flash_page_erase(AM_HAL_FLASH_PROGRAM_KEY,
+                                ui32CurrentBlock, ui32CurrentPage);
+    // program the data back
+    am_hal_flash_program_main(AM_HAL_FLASH_PROGRAM_KEY,
+                              (uint32_t *)ui8DbRamBuffer,
+                              (uint32_t *)pFlashAddr,
+                              ui16DbRamBufferSize%4?((ui16DbRamBufferSize/4) + 1):(ui16DbRamBufferSize/4));
+#endif
+    am_hal_interrupt_master_set(ui32Critical);
+}
+
+int32_t AppStorePairingInfoInNVM(appDbHdl_t hdl)
+{
+    appDbRec_t* pNvmRec =  pRecListNvmPointer;
+    appDbRec_t* pRamBufRec = (appDbRec_t*)ui8DbRamBuffer;
+
+    int i;
+
+
+    for(i=0;i<APP_DB_NUM_RECS;i++)
+    {
+        if((*(uint32_t*)(pNvmRec->peerAddr) != 0xFFFFFFFF))
+        {
+            if(BdaCmp(((appDbRec_t*)hdl)->peerAddr, pNvmRec->peerAddr))
+            {
+                updateRecordInNVM((uint32_t*)&pRamBufRec[i], (uint32_t*)((appDbRec_t*)hdl)->peerAddr, (uint32_t*)pRecListNvmPointer);
+                return true;
+            }
+
+            //skip
+            pNvmRec++;
+        }
+        else
+        {
+#if defined(AM_PART_APOLLO4) || defined(AM_PART_APOLLO4B)
+            am_hal_mram_main_program(AM_HAL_MRAM_PROGRAM_KEY,
+                                      (uint32_t *)((appDbRec_t*)hdl)->peerAddr,
+                                      (uint32_t *)pNvmRec,
+                                      (sizeof(appDbRec_t)%4?((sizeof(appDbRec_t)/4) + 1):(sizeof(appDbRec_t)/4)));
+#else
+            am_hal_flash_program_main(AM_HAL_FLASH_PROGRAM_KEY,
+                                      (uint32_t *)((appDbRec_t*)hdl)->peerAddr,
+                                      (uint32_t *)pNvmRec,
+                                      (sizeof(appDbRec_t)%4?((sizeof(appDbRec_t)/4) + 1):(sizeof(appDbRec_t)/4)));
+#endif
+            return true;
+        }
+    }
+
+    // if we get here, the record NVM are full
+    // function spec: erase all the record and record the current one
+    // erase the page
+    uint32_t ui32Critical = am_hal_interrupt_master_disable();
+#if defined(AM_PART_APOLLO4) || defined(AM_PART_APOLLO4B)
+    am_hal_mram_main_program(AM_HAL_MRAM_PROGRAM_KEY,
+                              (uint32_t *)((appDbRec_t*)hdl)->peerAddr,
+                              (uint32_t *)pRecListNvmPointer,
+                              (sizeof(appDbRec_t)%4?((sizeof(appDbRec_t)/4) + 1):(sizeof(appDbRec_t)/4)));
+#else
+    uint32_t ui32CurrentPage =  AM_HAL_FLASH_ADDR2PAGE((uint32_t)pRecListNvmPointer);
+    uint32_t ui32CurrentBlock = AM_HAL_FLASH_ADDR2INST((uint32_t)pRecListNvmPointer);
+
+    am_hal_flash_page_erase(AM_HAL_FLASH_PROGRAM_KEY,
+                                ui32CurrentBlock, ui32CurrentPage);
+    // program the data back
+    am_hal_flash_program_main(AM_HAL_FLASH_PROGRAM_KEY,
+                              (uint32_t *)((appDbRec_t*)hdl)->peerAddr,
+                              (uint32_t *)pRecListNvmPointer,
+                              (sizeof(appDbRec_t)%4?((sizeof(appDbRec_t)/4) + 1):(sizeof(appDbRec_t)/4)));
+#endif
+    am_hal_interrupt_master_set(ui32Critical);
+
+    return false;
+
+}
 /*************************************************************************************************/
 /*!
  *  \brief  Initialize the device database.
@@ -100,6 +230,9 @@ static appDbRec_t *pAppDbNewRec = appDb.rec;
 /*************************************************************************************************/
 void AppDbInit(void)
 {
+#ifdef AM_BLE_USE_NVM
+    AppCopyRecListInNvm(pAppDbNewRec);
+#endif
   return;
 }
 
@@ -149,7 +282,7 @@ appDbHdl_t AppDbNewRecord(uint8_t addrType, uint8_t *pAddr, bool_t master_role)
   pRec->peerAddedToRl = FALSE;
   pRec->peerRpao = FALSE;
   pRec->master_role = master_role;
-  
+
   return (appDbHdl_t) pRec;
 }
 
@@ -231,6 +364,10 @@ void AppDbValidateRecord(appDbHdl_t hdl, uint8_t keyMask)
 {
   ((appDbRec_t *) hdl)->valid = TRUE;
   ((appDbRec_t *) hdl)->keyValidMask = keyMask;
+
+#ifdef AM_BLE_USE_NVM
+  AppStorePairingInfoInNVM(hdl);
+#endif
 }
 
 /*************************************************************************************************/
@@ -558,6 +695,15 @@ void AppDbSetCccTblValue(appDbHdl_t hdl, uint16_t idx, uint16_t value)
   WSF_ASSERT(idx < APP_DB_NUM_CCCD);
 
   ((appDbRec_t *) hdl)->cccTbl[idx] = value;
+
+#ifdef AM_BLE_USE_NVM
+  uint8_t connId = AppConnIsOpen();
+
+  if(AppCheckBonded(connId))
+  {
+    AppStorePairingInfoInNVM(hdl);
+  }
+#endif
 }
 
 /*************************************************************************************************/

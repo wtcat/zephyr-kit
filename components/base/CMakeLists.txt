@@ -2,7 +2,8 @@
 
 zephyr_sources(
   observer.c
-  clock_tod.c
+  timeconv.c
+  mac_addr.c
 )
 
 

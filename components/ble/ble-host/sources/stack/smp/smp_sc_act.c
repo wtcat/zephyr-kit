@@ -301,6 +301,15 @@ bool_t smpScProcPairing(smpCcb_t *pCcb, uint8_t *pOob, uint8_t *pDisplay)
           /* set false to add in MITM below */
           justWorks = FALSE;
         }
+        else if((pCcb->pairRsp[SMP_IO_POS] == SMP_IO_NO_IN_NO_OUT) ||
+            (pCcb->pairReq[SMP_IO_POS] == SMP_IO_NO_IN_NO_OUT))
+        {
+          /* BT Spec v5.2 Vol 3 Part H C.2.2.2.1 */
+          /* Allow for MITM bit being set for "Just works" */
+          /* if a device has no in/out capabilities */
+          justWorks = FALSE;
+        }
+
       }
     }
 

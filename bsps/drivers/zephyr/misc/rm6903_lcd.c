@@ -20,11 +20,11 @@
 #define CONFIG_SWAP_BYTEORDER
 #define CONFIG_LCD_RGB565_FORMAT
 
-struct lcd_private;
+struct lcd_driver;
 struct lcd_render {
     struct k_sem sem;
     GX_RECTANGLE  rect;
-    struct lcd_private *lcd;
+    struct lcd_driver *lcd;
     uint16_t *buffer;
     size_t remain;
     size_t row_size;
@@ -40,7 +40,12 @@ struct lcd_render {
 #endif
 };
 
-struct lcd_private {
+struct lcd_driver {
+    /* 
+     * Inherit guix driver base class and must be
+     * place at first
+     */
+    struct guix_driver drv;
     struct lcd_render render;
     struct observer_base pm;
     //struct gpio_callback cb;
@@ -91,7 +96,7 @@ struct lcd_cmd {
 static void lcd_render_state_idle(struct lcd_render *render);
 static void lcd_render_state_ready(struct lcd_render *render);
 static void lcd_render_state_fire(struct lcd_render *render);
-static void lcd_renderer_init(struct lcd_private *lcd, 
+static void lcd_renderer_init(struct lcd_driver *lcd, 
     struct GX_CANVAS_STRUCT *canvas, GX_RECTANGLE *area);
 
 
@@ -302,12 +307,6 @@ const am_hal_mspi_dev_config_t lcd_spi_config = {
 	  .scramblingEndAddr	= 0,
 };
 
-
-#ifdef CONFIG_GUI_SPLIT_BINRES
-void __weak display_driver_draw_start(void) {}
-void __weak display_driver_draw_end(void) {}
-#endif
-
 static void mdelay(unsigned int ms)
 {
 	k_busy_wait(ms * 1000);
@@ -315,14 +314,14 @@ static void mdelay(unsigned int ms)
 
 static void lcd_spi_isr(const void *arg)
 {
-	struct lcd_private *lcd = (struct lcd_private *)arg;
+	struct lcd_driver *lcd = (struct lcd_driver *)arg;
     uint32_t status = MSPIn(lcd->spino)->INTSTAT;
 
 	MSPIn(lcd->spino)->INTCLR = status;
     am_hal_mspi_interrupt_service(lcd->spi, status);	
 }
 
-static void lcd_hardware_reset(struct lcd_private *lcd)
+static void lcd_hardware_reset(struct lcd_driver *lcd)
 {
     gpio_pin_set(lcd->gpio, lcd->pin_rst, 0); //am_hal_gpio_output_clear(lcd->pin_rst);
     mdelay(20);
@@ -338,7 +337,7 @@ static void lcd_render_next(struct lcd_render *render)
 
 static void spi_dma_cb(void *pCallbackCtxt, uint32_t status)
 {
-	struct lcd_private *lcd = pCallbackCtxt;
+	struct lcd_driver *lcd = pCallbackCtxt;
 	lcd_render_next(&lcd->render);
 }
 
@@ -374,7 +373,7 @@ static int lcd_write_cmd(void *dev, uint8_t cmd, const uint8_t *buffer,
     return am_hal_mspi_blocking_transfer(dev, &xfer, 100000);                      
 }
 
-static int lcd_write_data(struct lcd_private *lcd, const uint8_t *buffer, 
+static int lcd_write_data(struct lcd_driver *lcd, const uint8_t *buffer, 
 	size_t size, bool first)
 {
 	static const uint8_t wr_cmd[] = {0x3C, 0x2C};
@@ -406,7 +405,7 @@ static int lcd_write_data(struct lcd_private *lcd, const uint8_t *buffer,
 		AM_HAL_MSPI_TRANS_DMA, spi_dma_cb, lcd);					
 }
 
-static void lcd_set_rectangle(struct lcd_private *lcd, uint16_t x0, uint16_t y0, 
+static void lcd_set_rectangle(struct lcd_driver *lcd, uint16_t x0, uint16_t y0, 
 	uint16_t x1, uint16_t y1)
 {
     uint8_t cmd_buf[4];
@@ -423,7 +422,7 @@ static void lcd_set_rectangle(struct lcd_private *lcd, uint16_t x0, uint16_t y0,
     lcd_write_cmd(lcd->spi, 0x2B, cmd_buf, 4, false);
 }
 
-static int lcd_setup_commands(struct lcd_private *lcd, 
+static int lcd_setup_commands(struct lcd_driver *lcd, 
 	const struct lcd_cmd *cmd_table, size_t n)
 {
 	for (int i = 0; i < n; i++) {
@@ -512,7 +511,7 @@ static void lcd_render_state_idle(struct lcd_render *render)
     
 }
 
-static void lcd_renderer_init(struct lcd_private *lcd, 
+static void lcd_renderer_init(struct lcd_driver *lcd, 
     struct GX_CANVAS_STRUCT *canvas, GX_RECTANGLE *area)
 {
     GX_RECTANGLE limit;
@@ -555,12 +554,13 @@ static void lcd_renderer_init(struct lcd_private *lcd,
         render->rect.gx_rectangle_bottom = area->gx_rectangle_bottom +
                                       canvas->gx_canvas_display_offset_y;
         
-        __asm__ volatile("" ::: "memory");
+        compiler_barrier();
         render->state = lcd_render_state_ready;
     }
 }
+    
 
-static void lcd_sync_render(struct lcd_private *lcd)
+static void lcd_sync_render(struct lcd_driver *lcd)
 {
     struct lcd_render *render = &lcd->render;
     
@@ -570,7 +570,7 @@ static void lcd_sync_render(struct lcd_private *lcd)
 
 static void lcd_display_update(struct GX_CANVAS_STRUCT *canvas, GX_RECTANGLE *area)
 {
-    struct lcd_private *lcd = canvas->gx_canvas_display->gx_display_driver_data;
+    struct lcd_driver *lcd = canvas->gx_canvas_display->gx_display_driver_data;
     struct lcd_render *render = &lcd->render;
     GX_EVENT event;
     int ret;
@@ -631,12 +631,12 @@ reinit:
 //    gpio_port_pins_t pins)
 static void lcd_te_isr(int pin, void *params)
 {
-    struct lcd_private *lcd = params;
+    struct lcd_driver *lcd = params;
     lcd_sync_render(lcd);
     (void) pin;
 }
 
-static int lcd_setup_spi(struct lcd_private *lcd)
+static int lcd_setup_spi(struct lcd_driver *lcd)
 {
 	const am_hal_mspi_dev_config_t *cfg = &lcd_spi_config;
 	
@@ -671,7 +671,7 @@ _err:
 }
 
 
-static struct lcd_private lcd_device = {
+static struct lcd_driver lcd_drv = {
     .render = {
         .state = lcd_render_state_idle,
     },
@@ -685,7 +685,7 @@ static struct lcd_private lcd_device = {
 static int lcd_power_manage(struct observer_base *nb, 
     unsigned long action, void *data)
 {
-    struct lcd_private *lcd = &lcd_device;
+    struct lcd_driver *lcd = &lcd_drv;
     
     switch (action) {
     case GUIX_ENTER_SLEEP:
@@ -698,22 +698,19 @@ static int lcd_power_manage(struct observer_base *nb,
     return NOTIFY_DONE;
 }
 
-#ifdef CONFIG_GUI_SPLIT_BINRES
-static VOID canvas_draw_start(struct GX_DISPLAY_STRUCT *display, 
+static VOID lcd_canvas_draw_start(struct GX_DISPLAY_STRUCT *display, 
     struct GX_CANVAS_STRUCT *canvas)
 {
-    display_driver_draw_start();
+    struct guix_driver *drv = display->gx_display_driver_data;
+    guix_resource_map(drv, ~0u);
 }
 
-static VOID canvas_draw_end(struct GX_DISPLAY_STRUCT *display, 
+static VOID lcd_canvas_draw_stop(struct GX_DISPLAY_STRUCT *display, 
     struct GX_CANVAS_STRUCT *canvas)
 {
-    display_driver_draw_end();
+    struct guix_driver *drv = display->gx_display_driver_data;
+    guix_resource_unmap(drv, NULL);
 }
-#endif
-
-/* For touch pannel */
-void *disp_driver_data = &lcd_device;
 
 static UINT lcd_driver_setup(GX_DISPLAY *display)
 {
@@ -721,7 +718,7 @@ static UINT lcd_driver_setup(GX_DISPLAY *display)
     extern VOID guix_rgb565_display_driver_swap_byteorder(GX_DISPLAY *display);
 #endif
 
-    struct lcd_private *lcd = &lcd_device;
+    struct lcd_driver *lcd = &lcd_drv;
     int ret;
 
     if (display->gx_display_driver_data)
@@ -769,10 +766,8 @@ static UINT lcd_driver_setup(GX_DISPLAY *display)
 #else
     _gx_display_driver_24xrgb_setup(display, lcd, lcd_display_update);
 #endif
-#ifdef CONFIG_GUI_SPLIT_BINRES
-    display->gx_display_driver_drawing_initiate = canvas_draw_start;
-    display->gx_display_driver_drawing_complete = canvas_draw_end;
-#endif
+    display->gx_display_driver_drawing_initiate = lcd_canvas_draw_start;
+    display->gx_display_driver_drawing_complete = lcd_canvas_draw_stop;
 
     lcd->pm.next = NULL;
     lcd->pm.priority = 1;
@@ -784,24 +779,19 @@ static UINT lcd_driver_setup(GX_DISPLAY *display)
     return 1;
 }
 
-static struct guix_driver guix_driver_instance = {
-    .setup = lcd_driver_setup,
-    .next = NULL,
-    .id = 0,
-#ifdef CONFIG_GUI_SPLIT_BINRES
-    .mmap = display_driver_draw_start,
-    .unmap = display_driver_draw_end,
-    .map_base = (void *)0x4000000
-#endif
-}; 
-
 static int lcd_driver_init(const struct device *dev __unused)
 {
-    guix_driver_register(&guix_driver_instance);
+    struct guix_driver *drv = &lcd_drv.drv;
+    drv->id = 0;
+    drv->setup = lcd_driver_setup;
+    guix_driver_register(&lcd_drv.drv);
     return 0;
 }
 
 SYS_INIT(lcd_driver_init, PRE_KERNEL_2, 0);
 
+/* 
+ * For touch pannel
+ */
+void *disp_driver_data = &lcd_drv; //TODO:This is ugly!!!
 
-    

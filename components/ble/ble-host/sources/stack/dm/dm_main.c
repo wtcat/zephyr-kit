@@ -108,7 +108,11 @@ static const uint8_t dmHciToIdTbl[] =
   DM_ID_CONN_CTE,                               /* HCI_LE_SET_CONN_CTE_TX_PARAMS_CMD_CMPL_CBACK_EVT */
   DM_ID_CONN_CTE,                               /* HCI_LE_CONN_CTE_REQ_ENABLE_CMD_CMPL_CBACK_EVT */
   DM_ID_CONN_CTE,                               /* HCI_LE_CONN_CTE_RSP_ENABLE_CMD_CMPL_CBACK_EVT */
-  DM_ID_CONN_CTE                                /* HCI_LE_READ_ANTENNA_INFO_CMD_CMPL_CBACK_EVT */
+  DM_ID_CONN_CTE,                               /* HCI_LE_READ_ANTENNA_INFO_CMD_CMPL_CBACK_EVT */
+  DM_ID_CIS,                                    /* HCI_CIS_EST_CBACK_EVT */
+  DM_ID_CIS,                                    /* HCI_CIS_REQ_CBACK_EVT */
+  DM_ID_REQ_SCA,                                /* HCI_REQ_PEER_SCA_CBACK_EVT */
+  DM_ID_CONN_CTE                                /* HCI_LE_CONNLESS_IQ_REPORT_CBACK_EVT */
 };
 
 /* DM callback event length table */
@@ -172,6 +176,7 @@ static const uint16_t dmEvtCbackLen[] =
   sizeof(hciLeReadRemoteFeatCmplEvt_t),        /* DM_REMOTE_FEATURES_IND */
   sizeof(hciReadRemoteVerInfoCmplEvt_t),       /* DM_READ_REMOTE_VER_INFO_IND */
   sizeof(hciLeConnIQReportEvt_t),              /* DM_CONN_IQ_REPORT_IND */
+  sizeof(hciLeConlessIQReportEvt_t),           /* DM_CONNLESS_IQ_REPORT_IND */
   sizeof(hciLeCteReqFailedEvt_t),              /* DM_CTE_REQ_FAIL_IND */
   sizeof(hciLeSetConnCteRxParamsCmdCmplEvt_t), /* DM_CONN_CTE_RX_SAMPLE_START_IND */
   sizeof(hciLeSetConnCteRxParamsCmdCmplEvt_t), /* DM_CONN_CTE_RX_SAMPLE_START_IND */
@@ -232,7 +237,7 @@ dmCb_t dmCb;
 /*************************************************************************************************/
 static void dmHciEvtCback(hciEvt_t *pEvent)
 {
-  WSF_ASSERT(pEvent->hdr.event <= HCI_LE_READ_ANTENNA_INFO_CMD_CMPL_CBACK_EVT);
+  WSF_ASSERT(pEvent->hdr.event <= HCI_LE_CONNLESS_IQ_REPORT_CBACK_EVT);
 
   /* if DM not resetting or resetting but incoming event is HCI reset sequence complete event */
   if (!dmCb.resetting || (pEvent->hdr.event == HCI_RESET_SEQ_CMPL_CBACK_EVT))

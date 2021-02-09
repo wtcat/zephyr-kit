@@ -147,23 +147,48 @@ static void appScanResultAdd(dmEvt_t *pMsg)
   /* see if device is in list already */
   for (i = 0; i < APP_SCAN_RESULT_MAX; i++, pDev++)
   {
-    /* if address matches list entry */
-    if ((pDev->addrType == pMsg->scanReport.addrType) &&
-        BdaCmp(pDev->addr, pMsg->scanReport.addr))
+    if(DmScanModeLeg())
     {
-      /* device already exists in list; we are done */
-      break;
+        /* if address matches list entry */
+        if ((pDev->addrType == pMsg->scanReport.addrType) &&
+            BdaCmp(pDev->addr, pMsg->scanReport.addr))
+        {
+          /* device already exists in list; we are done */
+          break;
+        }
+        /* if entry is free end then of list has been reached */
+        else if (pDev->addrType == APP_ADDR_NONE)
+        {
+          /* add device to list */
+          pDev->addrType = pMsg->scanReport.addrType;
+          BdaCpy(pDev->addr, pMsg->scanReport.addr);
+          pDev->directAddrType = pMsg->scanReport.directAddrType;
+          BdaCpy(pDev->directAddr, pMsg->scanReport.directAddr);
+          appMasterCb.numScanResults++;
+          break;
+        }
     }
-    /* if entry is free end then of list has been reached */
-    else if (pDev->addrType == APP_ADDR_NONE)
+    else
     {
-      /* add device to list */
-      pDev->addrType = pMsg->scanReport.addrType;
-      BdaCpy(pDev->addr, pMsg->scanReport.addr);
-      pDev->directAddrType = pMsg->scanReport.directAddrType;
-      BdaCpy(pDev->directAddr, pMsg->scanReport.directAddr);
-      appMasterCb.numScanResults++;
-      break;
+        /* if address matches list entry */
+        if ((pDev->addrType == pMsg->extScanReport.addrType) &&
+            BdaCmp(pDev->addr, pMsg->extScanReport.addr))
+        {
+          /* device already exists in list; we are done */
+          break;
+        }
+        /* if entry is free end then of list has been reached */
+        else if (pDev->addrType == APP_ADDR_NONE)
+        {
+          /* add device to list */
+          pDev->addrType = pMsg->extScanReport.addrType;
+          pDev->secPhy = pMsg->extScanReport.secPhy;
+          BdaCpy(pDev->addr, pMsg->extScanReport.addr);
+          pDev->directAddrType = pMsg->extScanReport.directAddrType;
+          BdaCpy(pDev->directAddr, pMsg->extScanReport.directAddr);
+          appMasterCb.numScanResults++;
+          break;
+        }
     }
   }
 }
@@ -185,12 +210,25 @@ static uint8_t appScanResultFind(dmEvt_t *pMsg)
   /* see if device is in list already */
   for (i = 0; i < APP_SCAN_RESULT_MAX; i++, pDev++)
   {
-    /* if address matches list entry */
-    if ((pDev->addrType == pMsg->scanReport.addrType) &&
-        BdaCmp(pDev->addr, pMsg->scanReport.addr))
+    if(DmScanModeLeg())
     {
-      /* device already exists in list; we are done */
-      break;
+        /* if address matches list entry */
+        if ((pDev->addrType == pMsg->scanReport.addrType) &&
+            BdaCmp(pDev->addr, pMsg->scanReport.addr))
+        {
+          /* device already exists in list; we are done */
+          break;
+        }
+    }
+    else
+    {
+        /* if address matches list entry */
+        if ((pDev->addrType == pMsg->extScanReport.addrType) &&
+            BdaCmp(pDev->addr, pMsg->extScanReport.addr))
+        {
+          /* device already exists in list; we are done */
+          break;
+        }
     }
   }
 
@@ -550,11 +588,19 @@ static void appMasterResolvedAddrInd(dmEvt_t *pMsg)
       return;
     }
 
-    /* stop scanning */
-    AppScanStop();
+    if(DmScanModeLeg())
+    {
+        /* stop scanning */
+        AppScanStop();
 
-    /* connect to peer device using its advertising address */
-    AppConnOpen(pDev->addrType, pDev->addr, appMasterCb.dbHdl);
+        /* connect to peer device using its advertising address */
+        AppConnOpen(pDev->addrType, pDev->addr, appMasterCb.dbHdl);
+    }
+    else
+    {
+        AppExtScanStop();
+        AppExtConnOpen(pDev->secPhy, pDev->addrType, pDev->addr, appMasterCb.dbHdl);
+    }
   }
   /* if RPA did not resolve and there're more bonded records to go through */
   else if ((pMsg->hdr.status == HCI_ERR_AUTH_FAILURE) && (appMasterCb.dbHdl != APP_DB_HDL_NONE))
@@ -660,14 +706,17 @@ void AppMasterProcDmMsg(dmEvt_t *pMsg)
       appMasterCb.scanMode = APP_SCAN_MODE_NONE;
       break;
 
+    case DM_EXT_SCAN_START_IND:
     case DM_SCAN_START_IND:
       appMasterScanStart(pMsg);
       break;
 
+    case DM_EXT_SCAN_STOP_IND:
     case DM_SCAN_STOP_IND:
       appMasterScanStop(pMsg);
       break;
 
+    case DM_EXT_SCAN_REPORT_IND:
     case DM_SCAN_REPORT_IND:
       appMasterScanReport(pMsg);
       break;
@@ -892,8 +941,16 @@ void AppMasterResolveAddr(dmEvt_t *pMsg, appDbHdl_t dbHdl, uint8_t resolveType)
   /* if asked to resolve direct address */
   if (resolveType == APP_RESOLVE_DIRECT_RPA)
   {
-    /* resolve initiator's RPA to see if the directed advertisement is addressed to us */
-    DmPrivResolveAddr(pMsg->scanReport.directAddr, DmSecGetLocalIrk(), APP_RESOLVE_DIRECT_RPA);
+    if(DmScanModeLeg())
+    {
+        /* resolve initiator's RPA to see if the directed advertisement is addressed to us */
+        DmPrivResolveAddr(pMsg->scanReport.directAddr, DmSecGetLocalIrk(), APP_RESOLVE_DIRECT_RPA);
+    }
+    else
+    {
+        /* resolve initiator's RPA to see if the directed advertisement is addressed to us */
+        DmPrivResolveAddr(pMsg->extScanReport.directAddr, DmSecGetLocalIrk(), APP_RESOLVE_DIRECT_RPA);
+    }
 
     /* store scan record index and database record handle for later */
     appMasterCb.idx = idx;
@@ -909,8 +966,17 @@ void AppMasterResolveAddr(dmEvt_t *pMsg, appDbHdl_t dbHdl, uint8_t resolveType)
     /* if we have any bond records */
     if ((hdl != APP_DB_HDL_NONE) && ((pPeerKey = AppDbGetKey(hdl, DM_KEY_IRK, NULL)) != NULL))
     {
-      /* resolve advertiser's RPA to see if we already have a bond with this device */
-      DmPrivResolveAddr(pMsg->scanReport.addr, pPeerKey->irk.key, APP_RESOLVE_ADV_RPA);
+        if(DmScanModeLeg())
+        {
+          /* resolve advertiser's RPA to see if we already have a bond with this device */
+          DmPrivResolveAddr(pMsg->scanReport.addr, pPeerKey->irk.key, APP_RESOLVE_ADV_RPA);
+        }
+        else
+        {
+          /* resolve advertiser's RPA to see if we already have a bond with this device */
+          DmPrivResolveAddr(pMsg->extScanReport.addr, pPeerKey->irk.key, APP_RESOLVE_ADV_RPA);
+        }
+        
 
       /* store scan record index and database record handle for later */
       appMasterCb.idx = idx;

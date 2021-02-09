@@ -9,7 +9,7 @@
 
 //*****************************************************************************
 //
-// Copyright (c) 2020, Ambiq Micro
+// Copyright (c) 2020, Ambiq Micro, Inc.
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
@@ -41,7 +41,7 @@
 // ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
 // POSSIBILITY OF SUCH DAMAGE.
 //
-// This is part of revision 2.4.2 of the AmbiqSuite Development Package.
+// This is part of revision 2.5.1 of the AmbiqSuite Development Package.
 //
 //*****************************************************************************
 #include "wsf_types.h"
@@ -51,7 +51,7 @@
 #include "svc_ch.h"
 #include "svc_amdtp.h"
 #include "svc_cfg.h"
-#include "srv_ble_data.h"
+
 //*****************************************************************************
 //
 // Macro definitions
@@ -70,67 +70,52 @@
  Static Variables
 **************************************************************************************************/
 /* UUIDs */
-static const uint8_t svcRxUuid_GET[] = {UINT16_TO_BYTES(ATT_UUID_AMDTP_GET_RX_PART)};
-static const uint8_t svcTxUuid_GET[] = {UINT16_TO_BYTES(ATT_UUID_AMDTP_GET_TX_PART)};
-
-static const uint8_t svcRxUuid_POST[] = {UINT16_TO_BYTES(ATT_UUID_AMDTP_POST_RX_PART)};
-static const uint8_t svcTxUuid_POST[] = {UINT16_TO_BYTES(ATT_UUID_AMDTP_POST_TX_PART)};
-
-static const uint8_t svcRxUuid_PUSH[] = {UINT16_TO_BYTES(ATT_UUID_AMDTP_PUSH_RX_PART)};
-static const uint8_t svcTxUuid_PUSH[] = {UINT16_TO_BYTES(ATT_UUID_AMDTP_PUSH_TX_PART)};
+static const uint8_t svcRxUuid[] = {ATT_UUID_AMDTP_RX};
+static const uint8_t svcTxUuid[] = {ATT_UUID_AMDTP_TX};
+static const uint8_t svcAckUuid[] = {ATT_UUID_AMDTP_ACK};
 
 /**************************************************************************************************
  Service variables
 **************************************************************************************************/
 
-/* service */
-static const uint8_t amdtpSvc[] = {UINT16_TO_BYTES(ATT_UUID_AMDTP_SERVICE)};
+/* AMDTP service declaration */
+static const uint8_t amdtpSvc[] = {ATT_UUID_AMDTP_SERVICE};
 static const uint16_t amdtpLenSvc = sizeof(amdtpSvc);
 
+/* AMDTP RX characteristic */ 
+static const uint8_t amdtpRxCh[] = {ATT_PROP_WRITE_NO_RSP, UINT16_TO_BYTES(AMDTPS_RX_HDL), ATT_UUID_AMDTP_RX};
+static const uint16_t amdtpLenRxCh = sizeof(amdtpRxCh);
 
-/* Get write characteristic */ 
-static const uint8_t amdtpRxCh_GET[] = {ATT_PROP_WRITE_NO_RSP, UINT16_TO_BYTES(AMDTPS_GET_RX_HDL), UINT16_TO_BYTES(ATT_UUID_AMDTP_GET_RX)};
-static const uint16_t amdtpLenRxCh_GET = sizeof(amdtpRxCh_GET);
-static const uint8_t amdtpRx_GET[] = {0};
-static const uint16_t amdtpLenRx_GET = sizeof(amdtpRx_GET);
+/* AMDTP TX characteristic */ 
+static const uint8_t amdtpTxCh[] = {ATT_PROP_NOTIFY, UINT16_TO_BYTES(AMDTPS_TX_HDL), ATT_UUID_AMDTP_TX};
+static const uint16_t amdtpLenTxCh = sizeof(amdtpTxCh);
 
-/* Get Notify characteristic */ 
-static const uint8_t amdtpTxCh_GET[] = {ATT_PROP_NOTIFY, UINT16_TO_BYTES(AMDTPS_GET_TX_HDL), UINT16_TO_BYTES(ATT_UUID_AMDTP_GET_TX)};
-static const uint16_t amdtpLenTxCh_GET = sizeof(amdtpTxCh_GET);
-static const uint8_t amdtpTx_GET[] = {0};
-static const uint16_t amdtpLenTx_GET = sizeof(amdtpTx_GET);
-static uint8_t amdtpTxChCcc_GET[] = {UINT16_TO_BYTES(0x0000)};
-static const uint16_t amdtpLenTxChCcc_GET = sizeof(amdtpTxChCcc_GET);
+/* AMDTP RX ack characteristic */ 
+static const uint8_t amdtpAckCh[] = {(ATT_PROP_WRITE_NO_RSP | ATT_PROP_NOTIFY), UINT16_TO_BYTES(AMDTPS_ACK_HDL), ATT_UUID_AMDTP_ACK};
+static const uint16_t amdtpLenAckCh = sizeof(amdtpAckCh);
 
-/* Post write characteristic */ 
-static const uint8_t amdtpRxCh_POST[] = {ATT_PROP_WRITE_NO_RSP, UINT16_TO_BYTES(AMDTPS_POST_RX_HDL), UINT16_TO_BYTES(ATT_UUID_AMDTP_POST_RX)};
-static const uint16_t amdtpLenRxCh_POST = sizeof(amdtpRxCh_POST);
-static const uint8_t amdtpRx_POST[] = {0};
-static const uint16_t amdtpLenRx_POST = sizeof(amdtpRx_POST);
+/* AMDTP RX data */
+/* Note these are dummy values */
+static const uint8_t amdtpRx[] = {0};
+static const uint16_t amdtpLenRx = sizeof(amdtpRx);
 
+/* AMDTP TX data */
+/* Note these are dummy values */
+static const uint8_t amdtpTx[] = {0};
+static const uint16_t amdtpLenTx = sizeof(amdtpTx);
 
-/* Post Notify characteristic */ 
-static const uint8_t amdtpTxCh_POST[] = {ATT_PROP_NOTIFY, UINT16_TO_BYTES(AMDTPS_POST_TX_HDL), UINT16_TO_BYTES(ATT_UUID_AMDTP_POST_TX)};
-static const uint16_t amdtpLenTxCh_POST = sizeof(amdtpTxCh_POST);
-static const uint8_t amdtpTx_POST[] = {0};
-static const uint16_t amdtpLenTx_POST = sizeof(amdtpTx_POST);
-static uint8_t amdtpTxChCcc_POST[] = {UINT16_TO_BYTES(0x0000)};
-static const uint16_t amdtpLenTxChCcc_POST = sizeof(amdtpTxChCcc_POST);
+/* Proprietary data client characteristic configuration */
+static uint8_t amdtpTxChCcc[] = {UINT16_TO_BYTES(0x0000)};
+static const uint16_t amdtpLenTxChCcc = sizeof(amdtpTxChCcc);
 
-/* Push Write characteristic */ 
-static const uint8_t amdtpRxCh_PUSH[] = {ATT_PROP_WRITE_NO_RSP, UINT16_TO_BYTES(AMDTPS_PUSH_RX_HDL), UINT16_TO_BYTES(ATT_UUID_AMDTP_PUSH_RX)};
-static const uint16_t amdtpLenRxCh_PUSH = sizeof(amdtpRxCh_PUSH);
-static const uint8_t amdtpRx_PUSH[] = {0};
-static const uint16_t amdtpLenRx_PUSH = sizeof(amdtpRx_PUSH);
+/* AMDTP RX ack data */
+/* Note these are dummy values */
+static const uint8_t amdtpAck[] = {0};
+static const uint16_t amdtpLenAck = sizeof(amdtpAck);
 
-/* Push Notify characteristic */ 
-static const uint8_t amdtpTxCh_PUSH[] = {ATT_PROP_NOTIFY, UINT16_TO_BYTES(AMDTPS_PUSH_TX_HDL), UINT16_TO_BYTES(ATT_UUID_AMDTP_PUSH_TX)};
-static const uint16_t amdtpLenTxCh_PUSH = sizeof(amdtpTxCh_PUSH);
-static const uint8_t amdtpTx_PUSH[] = {0};
-static const uint16_t amdtpLenTx_PUSH = sizeof(amdtpTx_PUSH);
-static uint8_t amdtpTxChCcc_PUSH[] = {UINT16_TO_BYTES(0x0000)};
-static const uint16_t amdtpLenTxChCcc_PUSH = sizeof(amdtpTxChCcc_PUSH);
-
+/* Proprietary data client characteristic configuration */
+static uint8_t amdtpAckChCcc[] = {UINT16_TO_BYTES(0x0000)};
+static const uint16_t amdtpLenAckChCcc = sizeof(amdtpAckChCcc);
 
 
 /* Attribute list for AMDTP group */
@@ -144,133 +129,70 @@ static const attsAttr_t amdtpList[] =
     0,
     ATTS_PERMIT_READ
   },
-// 1  
   {
     attChUuid,
-    (uint8_t *) amdtpRxCh_GET,
-    (uint16_t *) &amdtpLenRxCh_GET,
-    sizeof(amdtpRxCh_GET),
+    (uint8_t *) amdtpRxCh,
+    (uint16_t *) &amdtpLenRxCh,
+    sizeof(amdtpRxCh),
     0,
     ATTS_PERMIT_READ
   },
   {
-    svcRxUuid_GET,
-    (uint8_t *) amdtpRx_GET,
-    (uint16_t *) &amdtpLenRx_GET,
+    svcRxUuid,
+    (uint8_t *) amdtpRx,
+    (uint16_t *) &amdtpLenRx,
     ATT_VALUE_MAX_LEN,
-    (ATTS_SET_VARIABLE_LEN | ATTS_SET_WRITE_CBACK),
+    (ATTS_SET_UUID_128 | ATTS_SET_VARIABLE_LEN | ATTS_SET_WRITE_CBACK),
     ATTS_PERMIT_WRITE
   },
   {
     attChUuid,
-    (uint8_t *) amdtpTxCh_GET,
-    (uint16_t *) &amdtpLenTxCh_GET,
-    sizeof(amdtpTxCh_GET),
+    (uint8_t *) amdtpTxCh,
+    (uint16_t *) &amdtpLenTxCh,
+    sizeof(amdtpTxCh),
     0,
     ATTS_PERMIT_READ
   },
   {
-    svcTxUuid_GET,
-    (uint8_t *) amdtpTx_GET,
-    (uint16_t *) &amdtpLenTx_GET,
-    sizeof(amdtpTx_GET), 
-    0, 
-    0,  
+    svcTxUuid,
+    (uint8_t *) amdtpTx,
+    (uint16_t *) &amdtpLenTx,
+    sizeof(amdtpTx), //ATT_VALUE_MAX_LEN,
+    0,  //(ATTS_SET_UUID_128 | ATTS_SET_VARIABLE_LEN),
+    0,  //ATTS_PERMIT_READ
   },
   {
     attCliChCfgUuid,
-    (uint8_t *) amdtpTxChCcc_GET,
-    (uint16_t *) &amdtpLenTxChCcc_GET,
-    sizeof(amdtpTxChCcc_GET),
+    (uint8_t *) amdtpTxChCcc,
+    (uint16_t *) &amdtpLenTxChCcc,
+    sizeof(amdtpTxChCcc),
     ATTS_SET_CCC,
     (ATTS_PERMIT_READ | ATTS_PERMIT_WRITE)
   },
-
-
-// 2 
   {
     attChUuid,
-    (uint8_t *) amdtpRxCh_POST,
-    (uint16_t *) &amdtpLenRxCh_POST,
-    sizeof(amdtpRxCh_POST),
+    (uint8_t *) amdtpAckCh,
+    (uint16_t *) &amdtpLenAckCh,
+    sizeof(amdtpAckCh),
     0,
     ATTS_PERMIT_READ
   },
   {
-    svcRxUuid_POST,
-    (uint8_t *) amdtpRx_POST,
-    (uint16_t *) &amdtpLenRx_POST,
+    svcAckUuid,
+    (uint8_t *) amdtpAck,
+    (uint16_t *) &amdtpLenAck,
     ATT_VALUE_MAX_LEN,
-    (ATTS_SET_VARIABLE_LEN | ATTS_SET_WRITE_CBACK),
-    ATTS_PERMIT_WRITE
-  },
-  {
-    attChUuid,
-    (uint8_t *) amdtpTxCh_POST,
-    (uint16_t *) &amdtpLenTxCh_POST,
-    sizeof(amdtpTxCh_POST),
-    0,
-    ATTS_PERMIT_READ
-  },
-  {
-    svcTxUuid_POST,
-    (uint8_t *) amdtpTx_POST,
-    (uint16_t *) &amdtpLenTx_POST,
-    sizeof(amdtpTx_POST), 
-    0,  
-    0,  
+    (ATTS_SET_UUID_128 | ATTS_SET_VARIABLE_LEN | ATTS_SET_WRITE_CBACK),
+    ATTS_PERMIT_WRITE,
   },
   {
     attCliChCfgUuid,
-    (uint8_t *) amdtpTxChCcc_POST,
-    (uint16_t *) &amdtpLenTxChCcc_POST,
-    sizeof(amdtpTxChCcc_POST),
+    (uint8_t *) amdtpAckChCcc,
+    (uint16_t *) &amdtpLenAckChCcc,
+    sizeof(amdtpAckChCcc),
     ATTS_SET_CCC,
     (ATTS_PERMIT_READ | ATTS_PERMIT_WRITE)
-  },
-  
-// 3 
-  {
-    attChUuid,
-    (uint8_t *) amdtpRxCh_PUSH,
-    (uint16_t *) &amdtpLenRxCh_PUSH,
-    sizeof(amdtpRxCh_PUSH),
-    0,
-    ATTS_PERMIT_READ
-  },
-  {
-    svcRxUuid_PUSH,
-    (uint8_t *) amdtpRx_PUSH,
-    (uint16_t *) &amdtpLenRx_PUSH,
-    ATT_VALUE_MAX_LEN,
-    (ATTS_SET_VARIABLE_LEN | ATTS_SET_WRITE_CBACK),
-    ATTS_PERMIT_WRITE
-  },
-  {
-    attChUuid,
-    (uint8_t *) amdtpTxCh_PUSH,
-    (uint16_t *) &amdtpLenTxCh_PUSH,
-    sizeof(amdtpTxCh_PUSH),
-    0,
-    ATTS_PERMIT_READ
-  },
-  {
-    svcTxUuid_PUSH,
-    (uint8_t *) amdtpTx_PUSH,
-    (uint16_t *) &amdtpLenTx_PUSH,
-    sizeof(amdtpTx_PUSH),
-    0,
-    0,
-  },
-  {
-    attCliChCfgUuid,
-    (uint8_t *) amdtpTxChCcc_PUSH,
-    (uint16_t *) &amdtpLenTxChCcc_PUSH,
-    sizeof(amdtpTxChCcc_PUSH),
-    ATTS_SET_CCC,
-    (ATTS_PERMIT_READ | ATTS_PERMIT_WRITE)
-  },  
-  
+  }
 };
 
 /* AMDTP group structure */

@@ -50,6 +50,7 @@ typedef struct
   uint8_t  state;                     /*! Connection state. */
   uint8_t  length;                    /*! Min CTE length. */
   uint16_t interval;                  /*! CTE interval. */
+  uint8_t cteType;                    /*! CTE type. */
   bool_t   numAntenna;                /*! Number of antenna and len of pAntennaIds in bytes. */
   uint8_t  *pAntennaIds;              /*! Array containing identifiers of antenna for this connection. */
 } atpcConnCb_t;
@@ -181,15 +182,21 @@ void AtpcCteDiscover(dmConnId_t connId, uint16_t *pHdlList)
  *  \param  connId    Connection identifier.
  *  \param  handle    Attribute handle.
  *  \param  enable    Enable.
+ *  \param  cteType   CTE Type.
  *
  *  \return None.
  */
 /*************************************************************************************************/
-void AtpcCteWriteEnable(dmConnId_t connId, uint16_t handle, uint8_t enable)
+void AtpcCteWriteEnable(dmConnId_t connId, uint16_t handle, uint8_t enable, uint8_t cteType)
 {
   WSF_ASSERT(handle != ATT_HANDLE_NONE);
 
-  AttcWriteReq(connId, handle, sizeof(uint8_t), &enable);
+  uint8_t data[2] = {0};
+
+  data[0] = enable;
+  data[1] = cteType;
+
+  AttcWriteReq(connId, handle, 2, data);
 }
 
 /*************************************************************************************************/
@@ -299,7 +306,8 @@ void AtpcCteWritePhy(dmConnId_t connId, uint16_t handle, uint8_t phy)
  *  \return None.
  */
 /*************************************************************************************************/
-void AtpcCteAclEnableReq(dmConnId_t connId, uint16_t handle, uint8_t length, uint16_t interval)
+void AtpcCteAclEnableReq(dmConnId_t connId, uint16_t handle, uint8_t length, uint16_t interval,
+                           uint8_t cteType)
 {
   atpcConnCb_t *pCcb;
 
@@ -311,9 +319,10 @@ void AtpcCteAclEnableReq(dmConnId_t connId, uint16_t handle, uint8_t length, uin
   pCcb->enableHandle = handle;
   pCcb->length = length;
   pCcb->interval = interval;
+  pCcb->cteType = cteType;
   pCcb->state = ATPC_CONN_STATE_ENABLING;
 
-  AtpcCteWriteEnable(connId, handle, CTE_ENABLE_ACL_BIT);
+  AtpcCteWriteEnable(connId, handle, CTE_ENABLE_ACL_BIT, cteType);
 }
 
 /*************************************************************************************************/
@@ -338,7 +347,7 @@ void AtpcCteAclDisableReq(dmConnId_t connId, uint16_t handle)
   pCcb->enableHandle = handle;
   pCcb->state = ATPC_CONN_STATE_DISABLING;
 
-  AtpcCteWriteEnable(connId, handle, CTE_ENABLE_NONE);
+  AtpcCteWriteEnable(connId, handle, CTE_ENABLE_NONE, 0);
 }
 
 /*************************************************************************************************/
@@ -397,8 +406,9 @@ void AtpcProcMsg(wsfMsgHdr_t *pEvt)
 
     case DM_CONN_CTE_RX_SAMPLE_START_IND:
       if ((pEvt->status == HCI_SUCCESS) && (pCcb->state == ATPC_CONN_STATE_ENABLING))
-      {
-        DmConnCteReqStart((dmConnId_t) pEvt->param, pCcb->interval, pCcb->length, HCI_CTE_TYPE_REQ_AOA);
+      {      
+        //DmConnCteReqStart((dmConnId_t) pEvt->param, pCcb->interval, pCcb->length, HCI_CTE_TYPE_REQ_AOA);
+        DmConnCteReqStart((dmConnId_t) pEvt->param, pCcb->interval, pCcb->length, pCcb->cteType);
       }
       break;
 

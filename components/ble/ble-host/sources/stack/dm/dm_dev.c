@@ -147,6 +147,7 @@ void dmDevHciHandler(hciEvt_t *pEvent)
       dmDevHciEvtReset(pEvent);
       break;
 
+    case HCI_VENDOR_SPEC_CMD_CMPL_CBACK_EVT:
     case HCI_VENDOR_SPEC_CBACK_EVT:
       dmDevHciEvtVendorSpec(pEvent);
       break;

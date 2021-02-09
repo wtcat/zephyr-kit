@@ -17,17 +17,60 @@
 		zephyr,shell-uart = &uart0;
 		zephyr,flash = &flash0;
 		zephyr,sram = &sram0;
-		/*zephyr,ccm = &ccm0;*/
+		zephyr,ccm = &ccm0;
+		zephyr,flash-controller = &flash;
+		zephyr,code-partition = &slot0_partition;
 	};
 	
 	soc {
 		flash-controller@40018000 {
-			flash0: flash@0000c000 {
-				reg = <0x0000c000 DT_SIZE_K(2000)>;
+			flash0: flash@00000000 {
+				reg = <0x00000000 DT_SIZE_K(2048)>;
+			};
+		};
+	};
+
+	mspi-nor {
+		compatible = "gd,mspi-nor";
+		label = "MSPI-NOR";
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			update_partition: partition@0 {
+				label = "update-img";
+				reg = <0x0 DT_SIZE_K(2048)>;
+			};
+			user_partition: partition@200000 {
+				label = "user-date";
+				reg = <0x200000 DT_SIZE_K(62*1024)>;
 			};
 		};
 	};
 };
+
+&flash0 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		otp_partition: partition@0 {
+			label = "otp";
+			reg = <0x0 DT_SIZE_K(48)>;
+		};
+		boot_partition: partition@c000 {
+			label = "mcuboot";
+			reg = <0x0000c000 DT_SIZE_K(192)>;
+		};
+		slot0_partition: partition@3c000 {
+			label = "image-0";
+			reg = <0x0003c000 DT_SIZE_K(1808)>;
+		};
+	};
+};
+
 
 &gpio0 {
     status = "okay";
@@ -91,6 +134,10 @@
 };
 
 &mspi1 {
+    status = "okay";
+};
+
+&adc1 {
     status = "okay";
 };
 

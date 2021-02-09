@@ -38,6 +38,18 @@
 /*************************************************************************************************/
 void WsfAssert(const char *pFile, uint16_t line)
 {
-    printk("%s:%d\n", pFile, (int)line);
-    for(;;);
+  volatile uint8_t escape=0;
+
+  /* spin forever if fatal error occurred */
+  for(;;)
+  {
+    /*
+     *  However, you can exit with a debugger by setting variable 'escape'.
+     *  Handy to see where the assert happened if you cannot view the call stack.
+    */
+    if (escape)
+    {
+      break;
+    }
+  }
 }

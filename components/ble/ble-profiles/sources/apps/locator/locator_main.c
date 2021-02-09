@@ -46,6 +46,8 @@
 #include "atpc/atpc_api.h"
 #include "locator/locator_api.h"
 #include "util/calc128.h"
+#include "app_main.h"
+
 
 /**************************************************************************************************
   Macros
@@ -60,6 +62,11 @@
 
 /*! CTE Interval. */
 #define LOCATOR_CTE_INTERVAL              25
+
+/*! CTE type. */
+#define LOCATOR_CTE_TYPE        HCI_CTE_TYPE_REQ_AOA
+
+#define EXT_SCAN_NAME_MAX_LEN   253
 
 /**************************************************************************************************
   Local Variables
@@ -85,6 +92,9 @@ typedef struct {
   bdAddr_t            addr;                         /*! Address of device to connect to */
   bool_t              doConnect;                    /*! TRUE to issue connect on scan complete */
   uint8_t             cteState;                     /*! State of CTE config process */
+  uint8_t             secPhy;                       /*! Secondary Advertising channel from extended advertising rerport event*/
+  uint16_t            eventType;                    /*! event type from extended advertising report event*/
+  
 } locatorConnInfo_t;
 
 locatorConnInfo_t locatorConnInfo;
@@ -96,14 +106,15 @@ static uint8_t locatorAntennaIds[] = {0, 1};
   Configurable Parameters
 **************************************************************************************************/
 
-/*! configurable parameters for master */
-static const appMasterCfg_t locatorMasterCfg =
+/*! configurable parameters for master extendec scan */
+static const appExtMasterCfg_t locatorMasterExtCfg = 
 {
-  96,                                      /*! The scan interval, in 0.625 ms units */
-  48,                                      /*! The scan window, in 0.625 ms units  */
-  4000,                                    /*! The scan duration in ms */
+  {96},                                      /*! The scan interval, in 0.625 ms units */
+  {48},                                      /*! The scan window, in 0.625 ms units  */
+  0,                                         /*! The scan duration in ms */
+  0,                                         /*! Scan period*/       
   DM_DISC_MODE_NONE,                       /*! The GAP discovery mode */
-  DM_SCAN_TYPE_ACTIVE                      /*! The scan type (active or passive) */
+  {DM_SCAN_TYPE_ACTIVE}                      /*! The scan type (active or passive) */
 };
 
 /*! configurable parameters for security */
@@ -113,7 +124,7 @@ static const appSecCfg_t locatorSecCfg =
   DM_KEY_DIST_IRK,                        /*! Initiator key distribution flags */
   DM_KEY_DIST_LTK | DM_KEY_DIST_IRK,      /*! Responder key distribution flags */
   FALSE,                                  /*! TRUE if Out-of-band pairing data is present */
-  TRUE                                    /*! TRUE to initiate security upon connection */
+  FALSE                                    /*! TRUE to initiate security upon connection */
 };
 
 /*! TRUE if Out-of-band pairing data is to be sent */
@@ -288,11 +299,7 @@ static void locatorDmCback(dmEvt_t *pDmEvt)
   {
     len = DmSizeOfEvt(pDmEvt);
 
-    if (pDmEvt->hdr.event == DM_SCAN_REPORT_IND)
-    {
-      reportLen = pDmEvt->scanReport.len;
-    }
-    else if (pDmEvt->hdr.event == DM_EXT_SCAN_REPORT_IND)
+    if (pDmEvt->hdr.event == DM_EXT_SCAN_REPORT_IND)
     {
       reportLen = pDmEvt->extScanReport.len;
     }
@@ -304,6 +311,10 @@ static void locatorDmCback(dmEvt_t *pDmEvt)
     {
       reportLen = pDmEvt->connIQReport.sampleCnt * 2;
     }
+    else if (pDmEvt->hdr.event == DM_CONNLESS_IQ_REPORT_IND)
+    {
+        reportLen = pDmEvt->connlessIQReport.sampleCnt * 2;
+    }
     else
     {
       reportLen = 0;
@@ -313,12 +324,7 @@ static void locatorDmCback(dmEvt_t *pDmEvt)
     {
       memcpy(pMsg, pDmEvt, len);
 
-      if (pDmEvt->hdr.event == DM_SCAN_REPORT_IND)
-      {
-        pMsg->scanReport.pData = (uint8_t *) ((uint8_t *) pMsg + len);
-        memcpy(pMsg->scanReport.pData, pDmEvt->scanReport.pData, reportLen);
-      }
-      else if (pDmEvt->hdr.event == DM_EXT_SCAN_REPORT_IND)
+      if (pDmEvt->hdr.event == DM_EXT_SCAN_REPORT_IND)
       {
         pMsg->extScanReport.pData = (uint8_t *)((uint8_t *)pMsg + len);
         memcpy(pMsg->extScanReport.pData, pDmEvt->extScanReport.pData, reportLen);
@@ -337,6 +343,16 @@ static void locatorDmCback(dmEvt_t *pDmEvt)
         /* Copy Q samples to space after I samples space */
         pMsg->connIQReport.pQSample = (int8_t *)((uint8_t *) pMsg->connIQReport.pISample + pDmEvt->connIQReport.sampleCnt);
         memcpy(pMsg->connIQReport.pQSample, pDmEvt->connIQReport.pQSample, pDmEvt->connIQReport.sampleCnt);
+      }
+      else if (pDmEvt->hdr.event == DM_CONNLESS_IQ_REPORT_IND)
+      {
+        /* Copy I samples to space after end of report struct */
+        pMsg->connlessIQReport.pISample = (int8_t *)((uint8_t *) pMsg + len);
+        memcpy(pMsg->connlessIQReport.pISample, pDmEvt->connlessIQReport.pISample, pDmEvt->connlessIQReport.sampleCnt);
+
+        /* Copy Q samples to space after I samples space */
+        pMsg->connlessIQReport.pQSample = (int8_t *)((uint8_t *) pMsg->connlessIQReport.pISample + pDmEvt->connlessIQReport.sampleCnt);
+        memcpy(pMsg->connlessIQReport.pQSample, pDmEvt->connlessIQReport.pQSample, pDmEvt->connlessIQReport.sampleCnt);
       }
 
       WsfMsgSend(locatorCb.handlerId, pMsg);
@@ -402,38 +418,50 @@ static void locatorScanStop(dmEvt_t *pMsg)
     /* Open connection */
     if (locatorConnInfo.doConnect)
     {
-      AppConnOpen(locatorConnInfo.addrType, locatorConnInfo.addr, locatorConnInfo.dbHdl);
-      locatorConnInfo.doConnect = FALSE;
+        if((locatorConnInfo.eventType & HCI_ADV_RPT_LEG_ADV_BIT) == 0)
+        {
+            APP_TRACE_INFO1("aux connect ,secphy=%d", locatorConnInfo.secPhy);
+            AppExtConnOpen(HCI_INIT_PHY_LE_1M_BIT|locatorConnInfo.secPhy, locatorConnInfo.addrType, locatorConnInfo.addr, locatorConnInfo.dbHdl);
+        }
+        else
+        {
+            APP_TRACE_INFO0("legacy connect");
+            AppExtConnOpen(HCI_INIT_PHY_LE_1M_BIT, locatorConnInfo.addrType, locatorConnInfo.addr, locatorConnInfo.dbHdl);
+        }
+      
+        locatorConnInfo.doConnect = FALSE;
     }
   }
 }
 
 /*************************************************************************************************/
 /*!
- *  \brief  Handle a scan report.
+ *  \brief  Handle a extended scan report.
  *
  *  \param  pMsg    Pointer to DM callback event message.
  *
  *  \return None.
  */
 /*************************************************************************************************/
-static void locatorScanReport(dmEvt_t *pMsg)
+static void locatorExtScanReport(dmEvt_t *pMsg)
 {
   uint8_t    *pData;
   appDbHdl_t dbHdl;
   bool_t     connect = FALSE;
-
+  uint16_t syncTimeout = 0x200;
+  char tmp_name[EXT_SCAN_NAME_MAX_LEN+1] = {0};
+  
   /* disregard if not scanning or autoconnecting */
-  if (!locatorCb.scanning || !locatorCb.autoConnect)
+    if (!locatorCb.scanning || !locatorCb.autoConnect)
   {
     return;
   }
 
   /* if we already have a bond with this device then connect to it */
-  if ((dbHdl = AppDbFindByAddr(pMsg->scanReport.addrType, pMsg->scanReport.addr)) != APP_DB_HDL_NONE)
+  if ((dbHdl = AppDbFindByAddr(pMsg->extScanReport.addrType, pMsg->extScanReport.addr)) != APP_DB_HDL_NONE)
   {
     /* if this is a directed advertisement where the initiator address is an RPA */
-    if (DM_RAND_ADDR_RPA(pMsg->scanReport.directAddr, pMsg->scanReport.directAddrType))
+    if (DM_RAND_ADDR_RPA(pMsg->extScanReport.directAddr, pMsg->extScanReport.directAddrType))
     {
       /* resolve direct address to see if it's addressed to us */
       AppMasterResolveAddr(pMsg, dbHdl, APP_RESOLVE_DIRECT_RPA);
@@ -444,18 +472,45 @@ static void locatorScanReport(dmEvt_t *pMsg)
     }
   }
   /* if the peer device uses an RPA */
-  else if (DM_RAND_ADDR_RPA(pMsg->scanReport.addr, pMsg->scanReport.addrType))
+  else if (DM_RAND_ADDR_RPA(pMsg->extScanReport.addr, pMsg->extScanReport.addrType))
   {
     /* resolve advertiser's RPA to see if we already have a bond with this device */
     AppMasterResolveAddr(pMsg, APP_DB_HDL_NONE, APP_RESOLVE_ADV_RPA);
   }
   /* find vendor-specific advertising data */
-  else if ((pData = DmFindAdType(DM_ADV_TYPE_MANUFACTURER, pMsg->scanReport.len,
-                                 pMsg->scanReport.pData)) != NULL)
+  else if ((pData = DmFindAdType(DM_ADV_TYPE_MANUFACTURER, pMsg->extScanReport.len,
+                                 pMsg->extScanReport.pData)) != NULL)
   {
     /* check length and vendor ID */
     if (pData[DM_AD_LEN_IDX] >= 3 && BYTES_UINT16_CMP(&pData[DM_AD_DATA_IDX], HCI_ID_ARM))
     {
+      //connect = TRUE;
+    }
+  }
+  /* find Local name advertising data */
+  else if ((pData = DmFindAdType(DM_ADV_TYPE_LOCAL_NAME, pMsg->extScanReport.len,
+                                 pMsg->extScanReport.pData)) != NULL)
+  {
+    memcpy(tmp_name, (char *)(pData+2),*pData-1);
+    
+    APP_TRACE_INFO1("device name:%s", tmp_name);
+    
+    /* check length and vendor ID */
+    if (!strncmp((char *)(pData+2), "Ambq_Per", *pData-1))
+    {
+      uint8_t advSid = pMsg->extScanReport.advSid;
+      uint8_t advAddrType = pMsg->extScanReport.addrType;
+      bdAddr_t advAddr;
+
+      memcpy(advAddr, pMsg->extScanReport.addr, BDA_ADDR_LEN);
+      
+      APP_TRACE_INFO0("found periodic adv device");
+      AppSyncStart(advSid, advAddrType, advAddr, 0, syncTimeout);
+    }      
+    /* check length and vendor ID */
+    else if (!strncmp((char *)(pData+2), "Asset Tag", *pData-1))
+    {
+      APP_TRACE_INFO0("found Asset Tag device");
       connect = TRUE;
     }
   }
@@ -464,13 +519,16 @@ static void locatorScanReport(dmEvt_t *pMsg)
   {
     /* stop scanning and connect */
     locatorCb.autoConnect = FALSE;
-    AppScanStop();
+    AppExtScanStop();
 
     /* Store peer information for connect on scan stop */
-    locatorConnInfo.addrType = DmHostAddrType(pMsg->scanReport.addrType);
-    memcpy(locatorConnInfo.addr, pMsg->scanReport.addr, sizeof(bdAddr_t));
+    locatorConnInfo.addrType = DmHostAddrType(pMsg->extScanReport.addrType);
+    memcpy(locatorConnInfo.addr, pMsg->extScanReport.addr, sizeof(bdAddr_t));
     locatorConnInfo.dbHdl = dbHdl;
     locatorConnInfo.doConnect = TRUE;
+    locatorConnInfo.secPhy = pMsg->extScanReport.secPhy;
+    locatorConnInfo.eventType = pMsg->extScanReport.eventType;
+    
   }
 }
 
@@ -517,7 +575,24 @@ static void locatorValueNtf(attEvt_t *pMsg)
 static void locatorProcIqRpt(hciLeConnIQReportEvt_t *pIqRpt)
 {
   APP_TRACE_INFO0("IQ Report");
-  APP_TRACE_INFO1("  status: %#x", pIqRpt->hdr.status);
+  APP_TRACE_INFO1("  status: %x", pIqRpt->hdr.status);
+  APP_TRACE_INFO1("  sampleCnt: %d", pIqRpt->sampleCnt);
+}
+
+
+/*************************************************************************************************/
+/*!
+ *  \brief  Process connectionless IQ report from the event handler.
+ *
+ *  \param  pIqRpt  Pointer to IQ Report message.
+ *
+ *  \return None.
+ */
+/*************************************************************************************************/
+static void locatorProcConlessIqRpt(hciLeConlessIQReportEvt_t *pIqRpt)
+{
+  APP_TRACE_INFO0("connectionless IQ Report");
+  APP_TRACE_INFO1("  status: %x", pIqRpt->hdr.status);
   APP_TRACE_INFO1("  sampleCnt: %d", pIqRpt->sampleCnt);
 }
 
@@ -587,15 +662,15 @@ static void locatorBtnCback(uint8_t btn)
           /* if scanning cancel scanning */
           if (locatorCb.scanning)
           {
-            AppScanStop();
+            AppExtScanStop();
           }
           /* else auto connect */
           else if (!locatorCb.autoConnect)
           {
             locatorCb.autoConnect = TRUE;
             locatorConnInfo.doConnect = FALSE;
-            AppScanStart(locatorMasterCfg.discMode, locatorMasterCfg.scanType,
-                         locatorMasterCfg.scanDuration);
+            AppExtScanStart(HCI_SCAN_PHY_LE_1M_BIT, locatorMasterExtCfg.discMode, 
+                locatorMasterExtCfg.scanType, locatorMasterExtCfg.scanDuration, locatorMasterExtCfg.scanPeriod);
           }
         }
         else
@@ -626,7 +701,7 @@ static void locatorBtnCback(uint8_t btn)
 
           /* Perform AoA enable request. */
           AtpcCteAclEnableReq(connId, pLocatorCteHdlList[connId-1][ATPC_CTE_ENABLE_HDL],
-                              LOCATOR_CTE_MIN_LEN, LOCATOR_CTE_INTERVAL);
+                              LOCATOR_CTE_MIN_LEN, LOCATOR_CTE_INTERVAL, LOCATOR_CTE_TYPE);
         }
         else
         {
@@ -634,7 +709,8 @@ static void locatorBtnCback(uint8_t btn)
           locatorCb.cteAction[connId-1] = LOCATOR_CTE_ACTION_ENABLE;
 
           /* Perform AoA disable request. */
-          AtpcCteAclDisableReq(connId, pLocatorCteHdlList[connId-1][ATPC_CTE_ENABLE_HDL]);
+          //AtpcCteAclDisableReq(connId, pLocatorCteHdlList[connId-1][ATPC_CTE_ENABLE_HDL]);
+          DmConnCteReqStop(connId);
         }
         break;
 
@@ -651,15 +727,16 @@ static void locatorBtnCback(uint8_t btn)
         /* if scanning cancel scanning */
         if (locatorCb.scanning)
         {
-          AppScanStop();
+          AppExtScanStop();
         }
         /* else auto connect */
         else if (!locatorCb.autoConnect)
         {
           locatorCb.autoConnect = TRUE;
           locatorConnInfo.doConnect = FALSE;
-          AppScanStart(locatorMasterCfg.discMode, locatorMasterCfg.scanType,
-                       locatorMasterCfg.scanDuration);
+          DmSyncInitialRptEnable(TRUE);
+          AppExtScanStart(HCI_SCAN_PHY_LE_1M_BIT, locatorMasterExtCfg.discMode, 
+                locatorMasterExtCfg.scanType, locatorMasterExtCfg.scanDuration, locatorMasterExtCfg.scanPeriod);
         }
         break;
 
@@ -818,19 +895,40 @@ static void locatorProcMsg(dmEvt_t *pMsg)
       uiEvent = APP_UI_RESET_CMPL;
       break;
 
-    case DM_SCAN_START_IND:
+    case DM_EXT_SCAN_START_IND:
       locatorScanStart(pMsg);
       uiEvent = APP_UI_SCAN_START;
       break;
 
-    case DM_SCAN_STOP_IND:
+    case DM_EXT_SCAN_STOP_IND:
       locatorScanStop(pMsg);
       uiEvent = APP_UI_SCAN_STOP;
       break;
 
-    case DM_SCAN_REPORT_IND:
-      locatorScanReport(pMsg);
+    case DM_EXT_SCAN_REPORT_IND:
+      locatorExtScanReport(pMsg);
       break;
+
+      case DM_PER_ADV_REPORT_IND:
+      {
+        uint16_t syncHandle = pMsg->perAdvReport.syncHandle;
+        uint8_t slotDurations = 0x01;
+        uint8_t maxSampleCte = 0x0;
+        uint8_t switchPatternLen = 0x2;
+        uint8_t pAntennaIDs[HCI_MIN_NUM_ANTENNA_IDS] = {0,1};
+
+        HciLeSetConlessIQSampleEnCmd(syncHandle, TRUE, slotDurations,
+                                maxSampleCte,switchPatternLen, pAntennaIDs);
+        
+        break;
+      }
+
+      case DM_CONNLESS_IQ_REPORT_IND:
+      {
+        locatorProcConlessIqRpt(&pMsg->connlessIQReport);
+
+        break;
+      }
 
     case DM_CONN_OPEN_IND:
       locatorOpen(pMsg);
@@ -933,7 +1031,7 @@ void LocatorHandlerInit(wsfHandlerId_t handlerId)
 
   locatorCb.btnConnId = 1;
   /* Set configuration pointers */
-  pAppMasterCfg = (appMasterCfg_t *) &locatorMasterCfg;
+  pAppExtMasterCfg = (appExtMasterCfg_t *)&locatorMasterExtCfg;
   pAppSecCfg = (appSecCfg_t *) &locatorSecCfg;
   pAppDiscCfg = (appDiscCfg_t *) &locatorDiscCfg;
   pAppCfg = (appCfg_t *)&locatorAppCfg;

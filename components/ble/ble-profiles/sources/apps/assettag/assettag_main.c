@@ -43,10 +43,54 @@
 #include "atps/atps_api.h"
 #include "gatt/gatt_api.h"
 #include "util/calc128.h"
+#include "assettag_api.h"
 
 /**************************************************************************************************
   Macros
 **************************************************************************************************/
+
+uint8_t advHandle[DM_NUM_ADV_SETS]  = {0, 1};
+
+static const appExtAdvCfg_t assetTagExtAdvCfg =
+{
+#if (DM_NUM_ADV_SETS == 1)
+    {0},
+    {800},
+    {0},
+    {FALSE},
+    {0},
+#elif (DM_NUM_ADV_SETS > 1)
+    {0, 0},
+    {800, 800},
+    {0, 0},
+    {FALSE, TRUE},
+#endif
+};
+
+uint8_t assetTagExtAdvDataDisc[] =
+{
+    /*! flags */
+    2,                                      /*! length */
+    DM_ADV_TYPE_FLAGS,                      /*! AD type */
+    DM_FLAG_LE_GENERAL_DISC |               /*! flags */
+    DM_FLAG_LE_BREDR_NOT_SUP,
+
+
+    /*! device name */
+    /*! device name */
+    10,                                      /*! length */
+    DM_ADV_TYPE_LOCAL_NAME,                  /*! AD type */
+    'A',
+    's',
+    's',
+    'e',
+    't',
+    ' ',
+    'T',
+    'a',
+    'g',
+};
+
 
 /*! Enumeration of client characteristic configuration descriptors */
 enum
@@ -71,18 +115,10 @@ enum
 /**************************************************************************************************
   Configurable Parameters
 **************************************************************************************************/
-
-/*! configurable parameters for advertising */
-static const appAdvCfg_t assetTagAdvCfg =
-{
-  {30000,     0,     0},                  /*! Advertising durations in ms */
-  {   96,  1600,     0}                   /*! Advertising intervals in 0.625 ms units */
-};
-
 /*! configurable parameters for slave */
 static const appSlaveCfg_t assetTagSlaveCfg =
 {
-  1,                                      /*! Maximum connections */
+  DM_NUM_ADV_SETS,                                      /*! Maximum connections */
 };
 
 /*! configurable parameters for security */
@@ -126,38 +162,6 @@ static uint8_t localIrk[] =
   Advertising Data
 **************************************************************************************************/
 
-/*! advertising data, discoverable mode */
-static const uint8_t assetTagAdvDataDisc[] =
-{
-  /*! flags */
-  2,                                      /*! length */
-  DM_ADV_TYPE_FLAGS,                      /*! AD type */
-  DM_FLAG_LE_GENERAL_DISC |               /*! flags */
-  DM_FLAG_LE_BREDR_NOT_SUP,
-
-  /*! manufacturer specific data */
-  3,                                      /*! length */
-  DM_ADV_TYPE_MANUFACTURER,               /*! AD type */
-  UINT16_TO_BYTES(HCI_ID_ARM),            /*! company ID */
-
-  /*! tx power */
-  2,                                      /*! length */
-  DM_ADV_TYPE_TX_POWER,                   /*! AD type */
-  0,                                      /*! tx power */
-
-  /*! service UUID list */
-  7,                                      /*! length */
-  DM_ADV_TYPE_16_UUID,                    /*! AD type */
-  UINT16_TO_BYTES(ATT_UUID_CONSTANT_TONE_SERVICE),
-  UINT16_TO_BYTES(ATT_UUID_DEVICE_INFO_SERVICE),
-  UINT16_TO_BYTES(ATT_UUID_BATTERY_SERVICE),
-
-  /*! appearance */
-  3,                                      /*! length */
-  DM_ADV_TYPE_APPEARANCE,                 /*! AD type */
-  UINT16_TO_BYTES(CH_APPEAR_TAG),         /*! appearance */
-};
-
 /*! scan data, discoverable mode */
 static const uint8_t assetTagScanDataDisc[] =
 {
@@ -174,6 +178,7 @@ static const uint8_t assetTagScanDataDisc[] =
   'a',
   'g',
 };
+extern appExtConnCb_t appExtConnCb[DM_CONN_MAX];
 
 /**************************************************************************************************
   Client Characteristic Configuration Descriptors
@@ -404,16 +409,18 @@ static void assetTagPrivRemDevFromResListInd(dmEvt_t *pMsg)
 /*************************************************************************************************/
 static void assetTagSetup(dmEvt_t *pMsg)
 {
-  /* set advertising and scan response data for discoverable mode */
-  AppAdvSetData(APP_ADV_DATA_DISCOVERABLE, sizeof(assetTagAdvDataDisc), (uint8_t *) assetTagAdvDataDisc);
-  AppAdvSetData(APP_SCAN_DATA_DISCOVERABLE, sizeof(assetTagScanDataDisc), (uint8_t *) assetTagScanDataDisc);
+    uint8_t adv_set = 0;
 
-  /* set advertising and scan response data for connectable mode */
-  AppAdvSetData(APP_ADV_DATA_CONNECTABLE, sizeof(assetTagAdvDataDisc), (uint8_t *) assetTagAdvDataDisc);
-  AppAdvSetData(APP_SCAN_DATA_CONNECTABLE, sizeof(assetTagScanDataDisc), (uint8_t *) assetTagScanDataDisc);
+    for(adv_set=0; adv_set<DM_NUM_ADV_SETS; adv_set++)
+    {
+        AppExtAdvSetData(advHandle[adv_set], APP_ADV_DATA_DISCOVERABLE, sizeof(assetTagExtAdvDataDisc), (uint8_t *) assetTagExtAdvDataDisc, HCI_EXT_ADV_DATA_LEN);
+        AppExtAdvSetData(advHandle[adv_set], APP_SCAN_DATA_DISCOVERABLE, sizeof(assetTagScanDataDisc), (uint8_t *) assetTagScanDataDisc, HCI_EXT_ADV_DATA_LEN);        
+    }
 
-  /* start advertising; automatically set connectable/discoverable mode and bondable mode */
-  AppAdvStart(APP_MODE_AUTO_INIT);
+    DmAdvSetPhyParam(advHandle[0], HCI_ADV_PHY_LE_1M, 0, HCI_ADV_PHY_LE_2M);
+    DmAdvSetPhyParam(advHandle[1], HCI_ADV_PHY_LE_1M, 0, HCI_ADV_PHY_LE_1M);
+
+    AppExtAdvStart(DM_NUM_ADV_SETS, advHandle, APP_MODE_AUTO_INIT);
 }
 
 /*************************************************************************************************/
@@ -428,6 +435,7 @@ static void assetTagSetup(dmEvt_t *pMsg)
 static void assetTagProcMsg(dmEvt_t *pMsg)
 {
   uint8_t uiEvent = APP_UI_NONE;
+  uint8_t i = 0;
 
   switch(pMsg->hdr.event)
   {
@@ -442,22 +450,29 @@ static void assetTagProcMsg(dmEvt_t *pMsg)
       uiEvent = APP_UI_RESET_CMPL;
       break;
 
-    case DM_ADV_START_IND:
-      uiEvent = APP_UI_ADV_START;
-      break;
-
-    case DM_ADV_STOP_IND:
-      uiEvent = APP_UI_ADV_STOP;
-      break;
-
     case DM_CONN_OPEN_IND:
       assetTagOpen(pMsg);
       uiEvent = APP_UI_CONN_OPEN;
       break;
 
     case DM_CONN_CLOSE_IND:
-      uiEvent = APP_UI_CONN_CLOSE;
-      break;
+    {
+        APP_TRACE_INFO1("conn close reason = 0x%x\n", pMsg->connClose.reason);
+        uint8_t connHdl = pMsg->connClose.handle;
+
+        for(i = 0; i< DM_CONN_MAX; i++)
+        {
+            if(appExtConnCb[i].used && (connHdl==appExtConnCb[i].connHandle))
+            {
+                appExtConnCb[i].used = FALSE;
+                AppExtAdvStart(1, &appExtConnCb[i].advHandle, APP_MODE_AUTO_INIT);
+
+                break;
+            }
+        }
+        uiEvent = APP_UI_CONN_CLOSE;
+    }
+    break;
 
     case DM_SEC_PAIR_CMPL_IND:
       DmSecGenerateEccKeyReq();
@@ -501,8 +516,22 @@ static void assetTagProcMsg(dmEvt_t *pMsg)
       break;
 
     case DM_ADV_SET_STOP_IND:
-      uiEvent = APP_UI_ADV_SET_STOP_IND;
-      break;
+    {    
+        for(i = 0; i< DM_CONN_MAX; i++)
+        {
+          if(!appExtConnCb[i].used)
+          {
+              appExtConnCb[i].used = TRUE;
+              appExtConnCb[i].advHandle = pMsg->advSetStop.advHandle;
+              appExtConnCb[i].connHandle = pMsg->advSetStop.handle;
+
+              break;
+          }
+        }
+
+        uiEvent = APP_UI_ADV_SET_STOP_IND;
+    }
+    break;
 
     case DM_SCAN_REQ_RCVD_IND:
       uiEvent = APP_UI_SCAN_REQ_RCVD_IND;
@@ -536,7 +565,7 @@ void AssetTagHandlerInit(wsfHandlerId_t handlerId)
 
   /* Set configuration pointers */
   pAppSlaveCfg = (appSlaveCfg_t *) &assetTagSlaveCfg;
-  pAppAdvCfg = (appAdvCfg_t *) &assetTagAdvCfg;
+  pAppExtAdvCfg = (appExtAdvCfg_t *) &assetTagExtAdvCfg;
   pAppSecCfg = (appSecCfg_t *) &assetTagSecCfg;
   pAppUpdateCfg = (appUpdateCfg_t *) &assetTagUpdateCfg;
   pAttCfg = (attCfg_t *) &assetTagAttCfg;

@@ -217,8 +217,8 @@ void basMeasTimerExp(wsfMsgHdr_t *pMsg)
       basSetupToSend();
 
       /* read battery measurement sensor data */
-      AppHwBattRead(&basCb.measBattLevel);			
-			
+      AppHwBattRead(&basCb.measBattLevel);
+
       /* if ready to send measurements */
       if (basCb.txReady)
       {
@@ -363,6 +363,6 @@ uint8_t BasReadCback(dmConnId_t connId, uint16_t handle, uint8_t operation,
 {
   /* read the battery level and set attribute value */
   AppHwBattRead(pAttr->pValue);
-	
+
   return ATT_SUCCESS;
 }

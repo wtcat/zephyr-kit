@@ -85,6 +85,11 @@ GX_VALUE   pen_pos;
 GX_WIDGET *target_1 = GX_NULL;
 GX_WIDGET *target_2 = GX_NULL;
 
+//add for new property.
+GX_CANVAS* canvas_tmp;
+GX_VALUE   display_width;
+GX_VALUE   display_height;
+
     if (animation -> gx_animation_slide_target_index_1 >= 0)
     {
         target_1 = animation -> gx_animation_info.gx_animation_slide_screen_list[animation -> gx_animation_slide_target_index_1];
@@ -94,6 +99,12 @@ GX_WIDGET *target_2 = GX_NULL;
     {
         return GX_SUCCESS;
     }
+
+    //add for new property.
+    _gx_widget_canvas_get((GX_WIDGET*)target_1, &canvas_tmp);
+    display_width = canvas_tmp->gx_canvas_display->gx_display_width;
+    display_height = canvas_tmp->gx_canvas_display->gx_display_height;
+
 
     if (animation -> gx_animation_slide_target_index_2 >= 0)
     {
@@ -154,7 +165,41 @@ GX_WIDGET *target_2 = GX_NULL;
 
         if (target_2)
         {
-            _gx_widget_shift(target_2, (GX_VALUE)(shift_x + delta_x), (GX_VALUE)(shift_y + delta_y), GX_TRUE);
+            if (animation->gx_animation_info.gx_animation_range_limit_type == GX_ANIMATION_LIMIT_STYLE_NONE) {
+                _gx_widget_shift(target_2, (GX_VALUE)(shift_x + delta_x), (GX_VALUE)(shift_y + delta_y), GX_TRUE);
+            }
+            else if (animation->gx_animation_info.gx_animation_range_limit_type == GX_ANIMATION_LIMIT_STYLE_VERTICAL_DOWN) {
+                if (target_2 == animation->gx_animation_info.gx_animation_slide_screen_list[1]) {
+                    GX_VALUE shift_value = shift_y + delta_y;
+                    if ((target_2->gx_widget_size.gx_rectangle_top + shift_value <= 0) &&
+                        (target_2->gx_widget_size.gx_rectangle_top + shift_value >= -display_height)) {
+                        _gx_widget_shift(target_2, 0, shift_value, GX_TRUE);
+                    }                    
+                }
+                else if (target_2 == animation->gx_animation_info.gx_animation_slide_screen_list[0]) {
+                    GX_VALUE shift_value = shift_y + delta_y;                 
+                    if ((target_2->gx_widget_size.gx_rectangle_top + shift_value >= 0) &&
+                        (target_2->gx_widget_size.gx_rectangle_top + shift_value <= display_height)) {
+                        _gx_widget_shift(target_2, 0, shift_value, GX_TRUE);
+                    }
+                }
+            }
+            else if (animation->gx_animation_info.gx_animation_range_limit_type == GX_ANIMATION_LIMIT_STYLE_VERTICAL_UP) {
+                if (target_2 == animation->gx_animation_info.gx_animation_slide_screen_list[0]) {
+                    GX_VALUE shift_value = shift_y + delta_y;
+                    if ((target_2->gx_widget_size.gx_rectangle_top + shift_value <= 0) &&
+                        (target_2->gx_widget_size.gx_rectangle_top + shift_value >= -display_height)) {
+                        _gx_widget_shift(target_2, 0, shift_value, GX_TRUE);
+                    }
+                }
+                else if (target_2 == animation->gx_animation_info.gx_animation_slide_screen_list[1]) {
+                    GX_VALUE shift_value = shift_y + delta_y;
+                    if ((target_2->gx_widget_size.gx_rectangle_top + shift_value >= 0) &&
+                        (target_2->gx_widget_size.gx_rectangle_top + shift_value <= display_height)) {
+                        _gx_widget_shift(target_2, 0, shift_value, GX_TRUE);
+                    }
+                }
+            }        
         }
         else
         {
@@ -170,11 +215,43 @@ GX_WIDGET *target_2 = GX_NULL;
             }
         }
 
-        _gx_widget_shift(target_1, (GX_VALUE)(shift_x + delta_x), (GX_VALUE)(shift_y + delta_y), GX_TRUE);
-
+        if (animation->gx_animation_info.gx_animation_range_limit_type == GX_ANIMATION_LIMIT_STYLE_NONE) {
+            _gx_widget_shift(target_1, (GX_VALUE)(shift_x + delta_x), (GX_VALUE)(shift_y + delta_y), GX_TRUE);
+        }
+        else if (animation->gx_animation_info.gx_animation_range_limit_type == GX_ANIMATION_LIMIT_STYLE_VERTICAL_DOWN) {
+            if (target_1 == animation->gx_animation_info.gx_animation_slide_screen_list[1]) {
+                GX_VALUE shift_value = shift_y + delta_y;
+                if ((target_1->gx_widget_size.gx_rectangle_top + shift_value <= 0) &&
+                    (target_1->gx_widget_size.gx_rectangle_top + shift_value >= -display_height)) {
+                    _gx_widget_shift(target_1, 0, shift_value, GX_TRUE);
+                }                
+            }
+            else if (target_1 == animation->gx_animation_info.gx_animation_slide_screen_list[0]) {
+                GX_VALUE shift_value = shift_y + delta_y;
+                if ((target_1->gx_widget_size.gx_rectangle_top + shift_value >= 0) &&
+                    (target_1->gx_widget_size.gx_rectangle_top + shift_value <= display_height)) {
+                    _gx_widget_shift(target_1, 0, shift_value, GX_TRUE);
+                }
+            }
+        } else if (animation->gx_animation_info.gx_animation_range_limit_type == GX_ANIMATION_LIMIT_STYLE_VERTICAL_UP) {
+            if (target_1 == animation->gx_animation_info.gx_animation_slide_screen_list[0]) {
+                GX_VALUE shift_value = shift_y + delta_y;
+                if ((target_1->gx_widget_size.gx_rectangle_top + shift_value <= 0) &&
+                    (target_1->gx_widget_size.gx_rectangle_top + shift_value >= -display_height)) {
+                    _gx_widget_shift(target_1, 0, shift_value, GX_TRUE);
+                }
+            }
+            else if (target_1 == animation->gx_animation_info.gx_animation_slide_screen_list[1]) {
+                GX_VALUE shift_value = shift_y + delta_y;
+                if ((target_1->gx_widget_size.gx_rectangle_top + shift_value >= 0) &&
+                    (target_1->gx_widget_size.gx_rectangle_top + shift_value <= display_height)) {
+                    _gx_widget_shift(target_1, 0, shift_value, GX_TRUE);
+                }
+            }
+        }
         animation -> gx_animation_slide_tracking_current_pos = pen_pos;
     }
-
+    
     /* Return completion status code. */
     return(GX_SUCCESS);
 }

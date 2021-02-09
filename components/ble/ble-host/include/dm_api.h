@@ -500,6 +500,7 @@ enum
   DM_REMOTE_FEATURES_IND,                 /*!< \brief Remote features from peer device */
   DM_READ_REMOTE_VER_INFO_IND,            /*!< \brief Remote LL version information read */
   DM_CONN_IQ_REPORT_IND,                  /*!< \brief IQ samples from CTE of received packet from peer device */
+  DM_CONNLESS_IQ_REPORT_IND,              /*!< \brief IQ samples from received advertising pakcets */
   DM_CTE_REQ_FAIL_IND,                    /*!< \brief CTE request failed */
   DM_CONN_CTE_RX_SAMPLE_START_IND,        /*!< \brief Sampling received CTE started */
   DM_CONN_CTE_RX_SAMPLE_STOP_IND,         /*!< \brief Sampling received CTE stopped */
@@ -757,6 +758,7 @@ typedef union
   hciLeReadRemoteFeatCmplEvt_t        readRemoteFeat;        /*!< \brief handles \ref DM_REMOTE_FEATURES_IND */
   hciReadRemoteVerInfoCmplEvt_t       readRemVerInfo;        /*!< \brief handles \ref DM_READ_REMOTE_VER_INFO_IND */
   hciLeConnIQReportEvt_t              connIQReport;          /*!< \brief handles \ref DM_CONN_IQ_REPORT_IND */
+  hciLeConlessIQReportEvt_t           connlessIQReport;      /*!< \brief handles \ref DM_CONNLESS_IQ_REPORT_IND */
   hciLeCteReqFailedEvt_t              cteReqFail;            /*!< \brief handles \ref DM_CTE_REQ_FAIL_IND */
   hciLeSetConnCteRxParamsCmdCmplEvt_t connCteRxSampleStart;  /*!< \brief handles \ref DM_CONN_CTE_RX_SAMPLE_START_IND */
   hciLeSetConnCteRxParamsCmdCmplEvt_t connCteRxSampleStop;   /*!< \brief handles \ref DM_CONN_CTE_RX_SAMPLE_STOP_IND */

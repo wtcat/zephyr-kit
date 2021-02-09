@@ -1,13 +1,5 @@
 # Device driver configure menu
 
-menuconfig GUIX
-	bool "GUIX for zephyr"
-	help
-	  Enable options for GUIX.
-
-
-if GUIX
-
 choice GUIX_ADAPT_IMPL
 prompt "GUIX for zephyr adapt layout"
 default GUIX_ZEPHYR_SPIN_BINDING
@@ -56,4 +48,3 @@ config RGB565_SWAP_BYTEORDER
 config GUIX_DISABLE_ERROR_CHECKING
 	bool "Don't check input paramters for GUI API so that improve speed"
 	
-endif #GUIX

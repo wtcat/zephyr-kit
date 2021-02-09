@@ -32,7 +32,7 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 
-			flash0: flash@0000c000 {
+			flash0: flash@00000000 {
 				compatible = "soc-nv-flash";
 				label = "FLASH_APOLLO3P";
 			};
@@ -219,6 +219,15 @@
 			label = "RTC_0";
 		};
 		
+		adc1: adc@50010000 {
+			compatible = "ambiq,apollo3p-adc";
+			reg = <0x50010000 0x400>;
+			interrupts = <18 0>;
+			status = "disabled";
+			label = "ADC_1";
+			#io-channel-cells = <1>;
+		};
+		
 		mspi0: mspi@50014000 {
 			compatible = "ambiq,apollo3p-mspi";
 			#address-cells = <1>;
@@ -249,6 +258,8 @@
 			label = "MSPI_2";
 		};
 	};
+	
+	
 };
 
 &nvic {

@@ -211,27 +211,15 @@ void mspi_apollo3p_release(struct mspi_device *dev)
     k_mutex_unlock(&dev->mutex);
 }
 
-int mspi_apollo3p_xip_set(struct mspi_device *dev, bool enable)
+void *mspi_apollo3p_xip_set(struct mspi_device *dev, bool enable)
 {
     if (!dev->initialized)
-        return -EINVAL;
-
-    k_mutex_lock(&dev->mutex, K_FOREVER);
+        return NULL;
+        
+    k_mutex_lock(&dev->mutex, K_FOREVER); //TODO: Remove it to optimaze speed??
     MSPIn(dev->devno)->FLASH_b.XIPEN = enable;
     dev->xip = enable;
     k_mutex_unlock(&dev->mutex);
-    return 0;
-}
-
-int mspi_apollo3p_mmap(struct mspi_device *dev, uint32_t *start,
-	uint32_t *end)
-{
-    if (!dev || !start)
-        return -EINVAL;
-
-    *start = dev->mmap->start;
-    if (end)
-        *end = dev->mmap->end;
-    return 0;
+    return (void *)dev->mmap->start;
 }
 

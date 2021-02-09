@@ -22,10 +22,8 @@ int mspi_apollo3p_transfer_poll(struct mspi_device *dev,
 int mspi_apollo3p_transfer(struct mspi_device *dev, 
     am_hal_mspi_dma_transfer_t *xfer);
 
-int mspi_apollo3p_xip_set(struct mspi_device *dev, bool enable);
+void *mspi_apollo3p_xip_set(struct mspi_device *dev, bool enable);
 
-int mspi_apollo3p_mmap(struct mspi_device *dev, uint32_t *start,
-    uint32_t *end);
 
 #ifdef __cplusplus
 }

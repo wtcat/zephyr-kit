@@ -255,6 +255,13 @@ void dmConnCteHciHandler(hciEvt_t *pEvent)
     return;
   }
 
+  if (pEvent->hdr.event == HCI_LE_CONNLESS_IQ_REPORT_CBACK_EVT)
+  {
+    pEvent->hdr.event = DM_CONNLESS_IQ_REPORT_IND;
+    (*dmCb.cback)((dmEvt_t *) pEvent);
+    return;
+   }
+
   /* if ccb found */
   if ((pCcb = dmConnCcbByHandle(pEvent->hdr.param)) != NULL)
   {

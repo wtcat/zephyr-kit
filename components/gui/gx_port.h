@@ -2,6 +2,8 @@
 #define LIB_GX_PORT_H_
 
 #include <stdint.h>
+#include <stddef.h>
+
 #ifdef CONFIG_GUIX_USER_MODE
 #include <app_memory/app_memdomain.h>
 #endif
@@ -10,8 +12,8 @@
 
 typedef INT    GX_BOOL;
 typedef SHORT  GX_VALUE;
-#define GX_VALUE_MAX                        0x7FFF
 
+#define GX_VALUE_MAX                        0x7FFF
 
 /* Define the basic system parameters.  */
 #ifndef GX_THREAD_STACK_SIZE
@@ -51,31 +53,48 @@ extern "C"{
 #endif
 
 struct GX_DISPLAY_STRUCT;
-
-#ifdef CONFIG_GUI_SPLIT_BINRES
 struct GX_THEME_STRUCT;
 struct GX_STRING_STRUCT;
-#endif
+
+#define INVALID_MAP_ADDR ((void *)(-1))
+struct gxres_device {
+    const char *dev_name;
+    UINT link_id;
+    void *(*mmap)(size_t size);
+    void (*unmap)(void *ptr);
+    struct gxres_device *next;
+};
 
 struct guix_driver {
     UINT (*setup)(struct GX_DISPLAY_STRUCT *display);
-    struct guix_driver *next;
     UINT id;
-#ifdef CONFIG_GUI_SPLIT_BINRES
-    VOID (*mmap)(VOID);
-    VOID (*unmap)(VOID);
+
+    /* Private data */
+    const struct gxres_device *dev;
+    struct guix_driver *next;
     void *map_base;
-#endif
 };
 
-#ifdef CONFIG_GUI_SPLIT_BINRES
+static inline void *guix_resource_map(struct guix_driver *drv, size_t size)
+{
+    return drv->dev->mmap(size);
+}
+
+static inline void guix_resource_unmap(struct guix_driver *drv, void *ptr)
+{
+    return drv->dev->unmap(ptr);
+}
+
 UINT guix_binres_load(struct guix_driver *drv, INT theme_id, 
     struct GX_THEME_STRUCT **theme, struct GX_STRING_STRUCT ***language);
-#endif
 UINT guix_main(UINT disp_id, struct guix_driver *drv);
 
+/*
+ * No thread-safe
+ */
 int guix_driver_register(struct guix_driver *drv);
-        
+int gxres_device_register(struct gxres_device *dev);
+
 #ifdef __cplusplus
 }
 #endif

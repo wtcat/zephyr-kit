@@ -78,6 +78,8 @@ static inline struct guix_event *event_get_first(struct list_head *head)
 }
 
 #if (CONFIG_GUIX_MEMPOOL_SIZE > 0)
+
+#if 0
 static K_MEM_POOL_DEFINE(guix_mpool, 4, CONFIG_GUIX_MEMPOOL_SIZE, 1, 4);
 
 /*
@@ -92,6 +94,19 @@ static void guix_memory_free(void *ptr)
 {
     k_free(ptr);
 }
+#else
+K_HEAP_DEFINE(guix_mpool, CONFIG_GUIX_MEMPOOL_SIZE);
+
+static void *guix_memory_allocate(ULONG size)
+{
+	return k_heap_alloc(&guix_mpool, size, K_NO_WAIT);
+}
+
+static void guix_memory_free(void *ptr)
+{
+	k_heap_free(&guix_mpool, ptr);
+}
+#endif
 #endif /* CONFIG_GUIX_MEMPOOL_SIZE > 0 */
 
 /* 

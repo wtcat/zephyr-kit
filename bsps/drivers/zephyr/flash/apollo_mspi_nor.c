@@ -9,10 +9,12 @@
 #include <soc.h>
 #include <logging/log.h>
 
-#include "flash/flash_priv.h"
+//#include "flash/flash_priv.h"
 #include "misc/mspi_apollo3p.h"
 
 LOG_MODULE_REGISTER(mspi_nor, CONFIG_FLASH_LOG_LEVEL);
+
+#define DT_DRV_COMPAT gd_mspi_nor
 
 
 #define  MX25X512G_JEDEC_RDID 		       0xC23A25
@@ -216,7 +218,7 @@ static int mspi_nor_read(const struct device *dev, off_t addr,
 
     if (offset < cfg->start ||
         offset + size > nor_end(cfg)) {
-        LOG_ERR("flash read address(0x%lx) is invalid\n", addr);
+        LOG_ERR("flash read address(0x%x) is invalid\n", (uint32_t)addr);
         return -EINVAL;
     }
 
@@ -244,7 +246,7 @@ static int mspi_nor_write(const struct device *dev, off_t addr,
 
     if (offset < cfg->start ||
         offset + size > nor_end(cfg)) {
-        LOG_ERR("flash write address(0x%lx) is invalid\n", addr);
+        LOG_ERR("flash write address(0x%x) is invalid\n", (uint32_t)addr);
         return -EINVAL;
     }
 
@@ -287,7 +289,7 @@ static int mspi_nor_erase(const struct device *dev, off_t addr,
 
     if (offset < cfg->start ||
         offset + size > nor_end(cfg)) {
-        LOG_ERR("flash erase address(0x%lx) is invalid\n", addr);
+        LOG_ERR("flash erase address(0x%x) is invalid\n", (uint32_t)addr);
         return -EINVAL;
     }
 
@@ -399,6 +401,42 @@ static const am_hal_mspi_dev_config_t quad_mspi_ce0_cfg = {
     .scramblingEndAddr    = 0,
 };
 
+static struct mspi_nor_priv nor_data;
+
+/*
+ * Flash xip mode for GUI
+ */
+#ifdef CONFIG_GUIX
+#include "gx_api.h"
+
+static void *flash_xip_mmap(size_t size)
+{
+    struct mspi_nor_priv *data = &nor_data;
+    void *ptr;
+
+    ARG_UNUSED(size);
+    k_mutex_lock(&data->mutex, K_FOREVER);
+    ptr = mspi_apollo3p_xip_set(data->mspi, true);
+    return ptr;
+}
+
+static void flash_xip_ummap(void *ptr)
+{
+    struct mspi_nor_priv *data = &nor_data;
+
+    ARG_UNUSED(ptr);
+    (void)mspi_apollo3p_xip_set(data->mspi, false);
+    k_mutex_unlock(&data->mutex);
+}
+
+static struct gxres_device gxres_norflash = {
+    .dev_name = "norflash",
+    .link_id = 0,
+    .mmap = flash_xip_mmap,
+    .unmap = flash_xip_ummap
+};
+#endif
+
 static int mspi_nor_init(const struct device *dev)
 {
     const struct mspi_nor_config *cfg = dev->config;
@@ -459,9 +497,13 @@ static int mspi_nor_init(const struct device *dev)
         ready = true;
 out:
     k_mutex_unlock(&data->mutex);
+#ifdef CONFIG_GUIX
+    gxres_device_register(&gxres_norflash);
+#endif
     return ret;
 }
 
+#if 0
 /*
  * Partition 0 (For boot and GUI resources)
  *  
@@ -506,4 +548,16 @@ DEVICE_AND_API_INIT(mspi_nor1,
                     POST_KERNEL,
                     CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
                     &qspi_nor_api);
-
+#else
+static const struct mspi_nor_config nor_config = {
+    .devno = 1,
+    .page_size = FLASH_PAGE_SIZE,
+    .wpage_size = FLASH_WBLK_SIZE,
+    .start = 0,
+    .size = FLASH_SIZE
+};
+DEVICE_DT_DEFINE(DT_DRV_INST(0), mspi_nor_init, &device_pm_control_nop,
+		 &nor_data, &nor_config,
+		 POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
+		 &qspi_nor_api);
+#endif

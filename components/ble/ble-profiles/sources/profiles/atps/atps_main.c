@@ -77,11 +77,12 @@ static atpsCb_t atpsCb;
  *
  *  \param  connId        Connection identifier.
  *  \param  enableBits    Enable bitfield value from client.
+ *  \param  cteType       CTE type for transmission
  *
  *  \return ATT status.
  */
 /*************************************************************************************************/
-static uint8_t atpsCteSetEnable(dmConnId_t connId, uint8_t enableBits)
+static uint8_t atpsCteSetEnable(dmConnId_t connId, uint8_t enableBits, uint8_t cteType)
 {
   atpsConnCb_t *pCcb;
   bool_t enableAcl = !!(enableBits & CTE_ENABLE_ACL_BIT);
@@ -101,7 +102,8 @@ static uint8_t atpsCteSetEnable(dmConnId_t connId, uint8_t enableBits)
     if (pCcb->state == ATPS_STATE_ACL_DISABLED)
     {
       pCcb->state = ATPS_STATE_ACL_STARTING;
-      DmConnCteTxConfig(connId, HCI_CTE_TYPE_PERMIT_AOA_RSP_BIT, pCcb->numAntenna, pCcb->pAntennaIds);
+      //DmConnCteTxConfig(connId, HCI_CTE_TYPE_PERMIT_AOA_RSP_BIT, pCcb->numAntenna, pCcb->pAntennaIds);
+      DmConnCteTxConfig(connId, 1<<cteType, pCcb->numAntenna, pCcb->pAntennaIds);
 
       /* Delay write response */
       return ATT_RSP_PENDING;
@@ -273,7 +275,7 @@ static uint8_t atpsCteWriteCback(dmConnId_t connId, uint16_t handle, uint8_t ope
   switch (handle)
   {
     case CTE_ENABLE_HDL:
-      status = atpsCteSetEnable(connId, *pValue);
+      status = atpsCteSetEnable(connId, *pValue, *(pValue+1));
       break;
 
     case CTE_MIN_LEN_HDL:
