@@ -5,6 +5,9 @@ menuconfig STP
 if STP
 choice
 prompt "STP Driver"
+config STP_BT
+  bool "STP bluetooth driver"
+  
 config STP_UART
   bool "STP uart driver"
   

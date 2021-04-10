@@ -538,7 +538,7 @@ static int bt_apollo3p_init(const struct device *unused)
     return bt_hci_driver_register(&drv);
 }
 
-#ifdef CONFIG_BT_HCI_STAT
+#if defined(CONFIG_BT_HCI_STAT) && defined(CONFIG_SHELL)
 static int bt_hci_driver_info(const struct shell *shell,
 			      size_t argc, char **argv)
 {

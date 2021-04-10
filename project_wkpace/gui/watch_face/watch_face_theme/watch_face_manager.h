@@ -1,54 +1,84 @@
 #ifndef __WATCH_FACE_MANAGER_H__
 #define __WATCH_FACE_MANAGER_H__
-#include "stdint.h"
-#include "sys/slist.h"
-#include "storage/flash_map.h"
+#include "custom_binres_theme_load.h"
 #include "errno.h"
 #include "gx_api.h"
+#include "irq.h"
+#include "stdint.h"
+#include "storage/flash_map.h"
+#include "sys/sem.h"
+#include "sys/slist.h"
 #include "watch_face_theme_1_conf.h"
+#include "watch_face_theme_customize.h"
+#include "watch_face_theme_draw.h"
+#include <devicetree.h>
+#include <errno.h>
+#include <kernel.h>
+#include <settings/settings.h>
+#include <stdint.h>
 
-#define WF_THEME_MAX_CNTS  5
+#define WF_THEME_MAX_CNTS 5
 
 #define WF_MAGIC_NUM 0x867435DF
 
-typedef struct _theme_node{
-    sys_snode_t node;
-    uint32_t    offset_of_next_node;
-    uint8_t partition_id;
-    uint8_t theme_ext_or_not; //theme store in ext flash or not.
+#define WF_THEME_STORE_IN_INT 0
+#define WF_THEME_STORE_IN_EXT 1
+
+#define WF_THEME_DEFAULT_ID 0
+
+#define WF_MIN_PARTITION_ID FLASH_AREA_ID(watch_face_1)
+#define WF_MAX_PARTITION_ID FLASH_AREA_ID(watch_face_5)
+
+typedef struct _theme_node {
+	char theme_name[16];
+	uint32_t uniqueID;
+	uint8_t partition_id;
+	uint8_t theme_ext_or_not; // theme store in ext flash or not.
+	char reserved[2];
+	GX_PIXELMAP thumb_info; // need preparse partition info [size = 28]
 } theme_node_t;
 
-typedef struct _slist_offse {
-	uint32_t head_offset;
-	uint32_t tail_offset;
-} slist_offset_t;
+typedef struct _watch_face_manager {
+	uint32_t magic_num;
+	uint8_t cnts;
+	uint8_t curr_theme_index;
+	uint8_t curr_write_partition_index;
+	theme_node_t theme_nodes[WF_THEME_MAX_CNTS];
+} watch_face_manager_t;
 
-typedef struct _watch_face_manager{
-    uint32_t magic_num;
-    uint8_t cnts;
-    uint8_t curr_theme_index;
-    uint8_t curr_write_index_of_array;
-    uint8_t reserved;
-    slist_offset_t slist_offset;
-    sys_slist_t slist;
-    theme_node_t theme_nodes[WF_THEME_MAX_CNTS];
-}watch_face_manager_t;
+typedef struct {
+	USHORT pixelmap_table_size;
+	GX_PIXELMAP **pixelmap_table;
+	USHORT color_table_size;
+	GX_COLOR *color_table;
+	theme_node_t *theme_node;
+	void *theme_buff_addr;
+} theme_info_t;
 
-//void watch_face_mgr_init(void);
-void watch_face_mgr_init(void * map_base);
+// void watch_face_mgr_init(void);
+// void watch_face_mgr_init(void * map_base);
+void wf_mgr_init(struct guix_driver *drv);
 
-int watch_face_mgr_cnts_get(void);
+uint8_t wf_mgr_cnts_get(void);
 
-int watch_face_mgr_theme_select(uint8_t theme_id);
+uint8_t wf_mgr_get_default_id(void);
 
-int watch_face_mgr_theme_thumb_get(uint8_t theme_id, void * addr);
+// int wf_mgr_theme_select(uint8_t theme_id);
+int wf_mgr_theme_select(uint8_t theme_id, GX_WIDGET *widget);
 
-void watch_face_theme_show(GX_WINDOW* widget);
+int wf_mgr_theme_thumb_get(uint8_t theme_id, GX_PIXELMAP **map);
 
-uint8_t watch_face_mgr_get_free_partition(void);
+int wf_mgr_theme_name_get(uint8_t theme_id, char **name, uint8_t length_max);
 
-int watch_face_mgr_theme_add(uint8_t partition_id);
+void wf_theme_show(GX_WINDOW *widget);
 
-int watch_face_mgr_theme_remove(uint8_t theme_id);
+int wf_mgr_get_free_partition(uint8_t *partition_id);
+
+int wf_mgr_theme_add(uint8_t partition_id);
+
+int wf_mgr_theme_remove(uint8_t theme_id);
+
+int wf_mgr_theme_style_edit(uint32_t theme_sequence_id, uint8_t element_id,
+							uint8_t type, uint32_t value);
 
 #endif

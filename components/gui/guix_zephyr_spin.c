@@ -53,19 +53,18 @@ K_APPMEM_PARTITION_DEFINE(guix_partition);
 static struct k_mem_domain guix_mem_domain;
 #endif
 
-
 static K_THREAD_STACK_DEFINE(guix_stack, CONFIG_GUIX_THREAD_STACK_SIZE);
 static struct k_thread guix_thread;
     
 static K_MUTEX_DEFINE(guix_lock);
 
-static struct guix_struct guix_class;
-
+static struct guix_struct guix_class = {
+    .pending = LIST_HEAD_INIT(guix_class.pending),
+    .free = LIST_HEAD_INIT(guix_class.free),
+};
 
 static void guix_event_queue_init(struct guix_struct *guix)
 {
-    INIT_LIST_HEAD(&guix->free);
-    INIT_LIST_HEAD(&guix->pending);
     for (int i = 0; i < GX_MAX_QUEUE_EVENTS; i++) 
         list_add_tail(&guix->events[i].node, &guix->free);    
 }
@@ -78,25 +77,7 @@ static inline struct guix_event *event_get_first(struct list_head *head)
 }
 
 #if (CONFIG_GUIX_MEMPOOL_SIZE > 0)
-
-#if 0
-static K_MEM_POOL_DEFINE(guix_mpool, 4, CONFIG_GUIX_MEMPOOL_SIZE, 1, 4);
-
-/*
- * memory pool for guix
- */
-static void *guix_memory_allocate(ULONG size)
-{
-    return k_mem_pool_malloc(&guix_mpool, (size_t)size);
-}
-
-static void guix_memory_free(void *ptr)
-{
-    k_free(ptr);
-}
-#else
-K_HEAP_DEFINE(guix_mpool, CONFIG_GUIX_MEMPOOL_SIZE);
-
+static K_HEAP_DEFINE(guix_mpool, CONFIG_GUIX_MEMPOOL_SIZE);
 static void *guix_memory_allocate(ULONG size)
 {
 	return k_heap_alloc(&guix_mpool, size, K_NO_WAIT);
@@ -106,7 +87,6 @@ static void guix_memory_free(void *ptr)
 {
 	k_heap_free(&guix_mpool, ptr);
 }
-#endif
 #endif /* CONFIG_GUIX_MEMPOOL_SIZE > 0 */
 
 /* 
@@ -157,13 +137,11 @@ static void guix_thread_adaptor(void *p1, void *p2, void *p3)
     bool wake_up ;
     UINT ret;
 
-    while (true) {
-        
+    for (;;) {
         /* Process GUI event */
         gx->entry(0);
 
         /* GUIX thread exited and stop timer */
-        //int state = gx->timer->base.thread_state;
         if (gx->timer_running) {
             wake_up = true;
             gx->timer_active = false;
@@ -180,6 +158,11 @@ static void guix_thread_adaptor(void *p1, void *p2, void *p3)
             ret = gx_generic_event_pop(&event, GX_FALSE);
             if (ret == GX_FAILURE) {
                 ret = gx_generic_event_pop(&event, GX_TRUE);
+				if (event.gx_event_type == GX_EVENT_KEY_DOWN) {
+					if (event.gx_event_payload.gx_event_ushortdata[0] == GX_KEY_HOME) {
+						continue;
+					}
+				}
                 break;
             }
         } while (true);
@@ -214,7 +197,6 @@ VOID gx_generic_rtos_initialize(VOID)
     k_sem_init(&gx->thread_sem, 0, 1);
     k_sem_init(&gx->timer_sem, 0, 1);
     guix_event_queue_init(gx);
-    
 #if (CONFIG_GUIX_MEMPOOL_SIZE > 0)
     gx_system_memory_allocator_set(guix_memory_allocate, 
         guix_memory_free);
@@ -243,7 +225,6 @@ UINT gx_generic_thread_start(VOID(*guix_thread_entry)(ULONG))
     k_thread_name_set(thread, "GUIX-THREAD");
     gx->entry = guix_thread_entry;
     k_thread_start(thread);
-    
     return GX_SUCCESS;
 }
 
@@ -259,7 +240,6 @@ UINT gx_generic_event_post(GX_EVENT *event_ptr)
         k_spin_unlock(&gx->lock, key);
         return GX_FAILURE;
     }
-
     ge = event_get_first(&gx->free);
     ge->event = *event_ptr;
     if (list_empty(&gx->pending)) {
@@ -296,7 +276,6 @@ UINT gx_generic_event_fold(GX_EVENT *event_ptr)
                 e->gx_event_payload.gx_event_ulongdata =
                     event_ptr->gx_event_payload.gx_event_ulongdata;
             }
-
             if (e->gx_event_type == GX_EVENT_PEN_DRAG)
                  _gx_system_pen_speed_update(&e->gx_event_payload.gx_event_pointdata);
             k_spin_unlock(&gx->lock, key);
@@ -308,7 +287,6 @@ UINT gx_generic_event_fold(GX_EVENT *event_ptr)
         k_spin_unlock(&gx->lock, key);
         return GX_FAILURE;
     }
-    
     ge = event_get_first(&gx->free);
     ge->event = *event_ptr;
     if (list_empty(&gx->pending)) {
@@ -317,7 +295,6 @@ UINT gx_generic_event_fold(GX_EVENT *event_ptr)
     } else {
         list_add_tail(&ge->node, &gx->pending);
     }
-
     k_spin_unlock(&gx->lock, key);
     return GX_SUCCESS;
 }
@@ -331,14 +308,12 @@ UINT gx_generic_event_pop(GX_EVENT *put_event, GX_BOOL wait)
     
     if (!wait && list_empty_careful(&gx->pending))
        return GX_FAILURE;
-
     key = k_spin_lock(&gx->lock);
     while (list_empty(&gx->pending)) {
         k_spin_unlock(&gx->lock, key);
         k_sem_take(&gx->wait, K_FOREVER);
         key = k_spin_lock(&gx->lock);
     }
-
     ge = (struct guix_event *)event_get_first(&gx->pending);
     *put_event = ge->event;
     list_add(&ge->node, &gx->free);
@@ -371,7 +346,6 @@ VOID gx_generic_event_purge(GX_WIDGET *target)
             }
         }
     }
-    
     k_spin_unlock(&gx->lock, key);
 }
 
@@ -426,5 +400,3 @@ VOID gx_generic_time_delay(int ticks)
     k_timeout_t t = {ticks};
     k_sleep(t);
 }
-
-

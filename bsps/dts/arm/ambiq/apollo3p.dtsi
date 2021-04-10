@@ -7,7 +7,7 @@
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		cpu@0 {
+		cpu0: cpu@0 {
 			device_type = "cpu";
 			compatible = "arm,cortex-m4f";
 			reg = <0>;
@@ -25,6 +25,119 @@
 	};
 	
 	soc {
+	
+    ctimer0: timers@0 {
+	    compatible = "ambiq,apollo3p-timers";
+	    reg = <0x0 0x20>;
+	    status = "disabled";
+	    label = "CTIMER_0";
+
+	    pwm {
+		    compatible = "ambiq,apollo3p-pwm";
+		    status = "disabled";
+		    label = "PWM_0";
+		    #pwm-cells = <3>;
+	    };
+    };
+
+    ctimer1: timers@1 {
+	    compatible = "ambiq,apollo3p-timers";
+	    reg = <0x1 0x20>;
+	    status = "disabled";
+	    label = "CTIMER_1";
+
+	    pwm {
+		    compatible = "ambiq,apollo3p-pwm";
+		    status = "disabled";
+		    label = "PWM_1";
+		    #pwm-cells = <3>;
+	    };
+    };
+
+    ctimer2: timers@2 {
+	    compatible = "ambiq,apollo3p-timers";
+	    reg = <0x2 0x20>;
+	    status = "disabled";
+	    label = "CTIMER_2";
+
+	    pwm {
+		    compatible = "ambiq,apollo3p-pwm";
+		    status = "disabled";
+		    label = "PWM_2";
+		    #pwm-cells = <3>;
+	    };
+    };
+
+    ctimer3: timers@3 {
+	    compatible = "ambiq,apollo3p-timers";
+	    reg = <0x3 0x20>;
+	    status = "disabled";
+	    label = "CTIMER_3";
+
+	    pwm {
+		    compatible = "ambiq,apollo3p-pwm";
+		    status = "disabled";
+		    label = "PWM_3";
+		    #pwm-cells = <3>;
+	    };
+    };
+
+    ctimer4: timers@4 {
+	    compatible = "ambiq,apollo3p-timers";
+	    reg = <0x4 0x20>;
+	    status = "disabled";
+	    label = "CTIMER_4";
+
+	    pwm {
+		    compatible = "ambiq,apollo3p-pwm";
+		    status = "disabled";
+		    label = "PWM_4";
+		    #pwm-cells = <3>;
+	    };
+    };
+
+    ctimer5: timers@5 {
+	    compatible = "ambiq,apollo3p-timers";
+	    reg = <0x5 0x20>;
+	    status = "disabled";
+	    label = "CTIMER_5";
+
+	    pwm {
+		    compatible = "ambiq,apollo3p-pwm";
+		    status = "disabled";
+		    label = "PWM_5";
+		    #pwm-cells = <3>;
+	    };
+    };
+
+    ctimer6: timers@6 {
+	    compatible = "ambiq,apollo3p-timers";
+	    reg = <0x6 0x20>;
+	    status = "disabled";
+	    label = "CTIMER_6";
+
+	    pwm {
+		    compatible = "ambiq,apollo3p-pwm";
+		    status = "disabled";
+		    label = "PWM_6";
+		    #pwm-cells = <3>;
+	    };
+    };
+
+    ctimer7: timers@7 {
+	    compatible = "ambiq,apollo3p-timers";
+	    reg = <0x7 0x20>;
+	    status = "disabled";
+	    label = "CTIMER_7";
+
+	    pwm {
+		    compatible = "ambiq,apollo3p-pwm";
+		    status = "disabled";
+		    label = "PWM_7";
+		    #pwm-cells = <3>;
+	    };
+    };
+
 		flash: flash-controller@40018000 {
 			compatible = "ambiq,apollo3p-flash-controller";
 			label = "FLASH_CTRL";
@@ -258,8 +371,6 @@
 			label = "MSPI_2";
 		};
 	};
-	
-	
 };
 
 &nvic {

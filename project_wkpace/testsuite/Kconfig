@@ -15,6 +15,9 @@ config LIS2DH_TEST
 
 config ADC_TEST
   bool "ADC test"
+
+config ICM42607_TEST
+  bool "ICM42607 6D sensor test"
   
 rsource "ble/Kconfig"
 endmenu

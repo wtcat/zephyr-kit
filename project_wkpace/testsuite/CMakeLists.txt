@@ -8,7 +8,9 @@ endif()
 
 zephyr_library_sources_ifdef(CONFIG_GPIO_TEST   gpio_unit_test.c)
 zephyr_library_sources_ifdef(CONFIG_LIS2DH_TEST lis2dh_unit_test.c)
-zephyr_library_sources_ifdef(CONFIG_ADC_TEST adc_unit_test.c)
+#zephyr_library_sources_ifdef(CONFIG_ADC_TEST adc_unit_test.c)
+zephyr_library_sources_ifdef(CONFIG_ADC_TEST adc_sensor_service_unit_test.c)
+zephyr_library_sources_ifdef(CONFIG_ICM42607_TEST icm42607_test.c)
 zephyr_library_sources(empty_test.c)
 
 add_subdirectory(ble)

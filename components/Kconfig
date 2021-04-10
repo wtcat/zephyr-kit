@@ -12,3 +12,4 @@ endif
 
 rsource "stp/Kconfig"
 rsource "protobuf-c/Kconfig"
+rsource "services/Kconfig"

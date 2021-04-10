@@ -7,51 +7,6 @@
 #endif
 
 #include "remind.pb-c.h"
-void   remind__call__init
-                     (Remind__Call         *message)
-{
-  static const Remind__Call init_value = REMIND__CALL__INIT;
-  *message = init_value;
-}
-size_t remind__call__get_packed_size
-                     (const Remind__Call *message)
-{
-  assert(message->base.descriptor == &remind__call__descriptor);
-  return protobuf_c_message_get_packed_size ((const ProtobufCMessage*)(message));
-}
-size_t remind__call__pack
-                     (const Remind__Call *message,
-                      uint8_t       *out)
-{
-  assert(message->base.descriptor == &remind__call__descriptor);
-  return protobuf_c_message_pack ((const ProtobufCMessage*)message, out);
-}
-size_t remind__call__pack_to_buffer
-                     (const Remind__Call *message,
-                      ProtobufCBuffer *buffer)
-{
-  assert(message->base.descriptor == &remind__call__descriptor);
-  return protobuf_c_message_pack_to_buffer ((const ProtobufCMessage*)message, buffer);
-}
-Remind__Call *
-       remind__call__unpack
-                     (ProtobufCAllocator  *allocator,
-                      size_t               len,
-                      const uint8_t       *data)
-{
-  return (Remind__Call *)
-     protobuf_c_message_unpack (&remind__call__descriptor,
-                                allocator, len, data);
-}
-void   remind__call__free_unpacked
-                     (Remind__Call *message,
-                      ProtobufCAllocator *allocator)
-{
-  if(!message)
-    return;
-  assert(message->base.descriptor == &remind__call__descriptor);
-  protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
-}
 void   remind__message__init
                      (Remind__Message         *message)
 {
@@ -142,86 +97,32 @@ void   remind__battery__free_unpacked
   assert(message->base.descriptor == &remind__battery__descriptor);
   protobuf_c_message_free_unpacked ((ProtobufCMessage*)message, allocator);
 }
-static const ProtobufCFieldDescriptor remind__call__field_descriptors[3] =
-{
-  {
-    "timestamp",
-    1,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_FIXED32,
-    0,   /* quantifier_offset */
-    offsetof(Remind__Call, timestamp),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "phone",
-    2,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    offsetof(Remind__Call, phone),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "people",
-    3,
-    PROTOBUF_C_LABEL_OPTIONAL,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    offsetof(Remind__Call, people),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-};
-static const unsigned remind__call__field_indices_by_name[] = {
-  2,   /* field[2] = people */
-  1,   /* field[1] = phone */
-  0,   /* field[0] = timestamp */
-};
-static const ProtobufCIntRange remind__call__number_ranges[1 + 1] =
-{
-  { 1, 0 },
-  { 0, 3 }
-};
-const ProtobufCMessageDescriptor remind__call__descriptor =
-{
-  PROTOBUF_C__MESSAGE_DESCRIPTOR_MAGIC,
-  "remind.Call",
-  "Call",
-  "Remind__Call",
-  "remind",
-  sizeof(Remind__Call),
-  3,
-  remind__call__field_descriptors,
-  remind__call__field_indices_by_name,
-  1,  remind__call__number_ranges,
-  (ProtobufCMessageInit) remind__call__init,
-  NULL,NULL,NULL    /* reserved[123] */
-};
-static const ProtobufCEnumValue remind__message__type__enum_values_by_number[4] =
+static const ProtobufCEnumValue remind__message__type__enum_values_by_number[9] =
 {
   { "TEXT", "REMIND__MESSAGE__TYPE__TEXT", 0 },
   { "FACEBOOK", "REMIND__MESSAGE__TYPE__FACEBOOK", 1 },
   { "WECHAT", "REMIND__MESSAGE__TYPE__WECHAT", 2 },
   { "QQ", "REMIND__MESSAGE__TYPE__QQ", 3 },
+  { "WHATSAPP", "REMIND__MESSAGE__TYPE__WHATSAPP", 4 },
+  { "MESSENGER", "REMIND__MESSAGE__TYPE__MESSENGER", 5 },
+  { "TWITTER", "REMIND__MESSAGE__TYPE__TWITTER", 6 },
+  { "LINKEDIN", "REMIND__MESSAGE__TYPE__LINKEDIN", 7 },
+  { "INSTAGRAM", "REMIND__MESSAGE__TYPE__INSTAGRAM", 8 },
 };
 static const ProtobufCIntRange remind__message__type__value_ranges[] = {
-{0, 0},{0, 4}
+{0, 0},{0, 9}
 };
-static const ProtobufCEnumValueIndex remind__message__type__enum_values_by_name[4] =
+static const ProtobufCEnumValueIndex remind__message__type__enum_values_by_name[9] =
 {
   { "FACEBOOK", 1 },
+  { "INSTAGRAM", 8 },
+  { "LINKEDIN", 7 },
+  { "MESSENGER", 5 },
   { "QQ", 3 },
   { "TEXT", 0 },
+  { "TWITTER", 6 },
   { "WECHAT", 2 },
+  { "WHATSAPP", 4 },
 };
 const ProtobufCEnumDescriptor remind__message__type__descriptor =
 {
@@ -230,25 +131,25 @@ const ProtobufCEnumDescriptor remind__message__type__descriptor =
   "Type",
   "Remind__Message__Type",
   "remind",
-  4,
+  9,
   remind__message__type__enum_values_by_number,
-  4,
+  9,
   remind__message__type__enum_values_by_name,
   1,
   remind__message__type__value_ranges,
   NULL,NULL,NULL,NULL   /* reserved[1234] */
 };
 static const Remind__Message__Type remind__message__type__default_value = REMIND__MESSAGE__TYPE__TEXT;
-static const ProtobufCFieldDescriptor remind__message__field_descriptors[5] =
+static const ProtobufCFieldDescriptor remind__message__field_descriptors[7] =
 {
   {
     "timestamp",
     1,
     PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_FIXED32,
+    PROTOBUF_C_TYPE_MESSAGE,
     0,   /* quantifier_offset */
     offsetof(Remind__Message, timestamp),
-    NULL,
+    &proto__time__unix_timestamp__descriptor,
     NULL,
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
@@ -266,9 +167,57 @@ static const ProtobufCFieldDescriptor remind__message__field_descriptors[5] =
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
   {
-    "phone",
+    "maxno",
     3,
     PROTOBUF_C_LABEL_REQUIRED,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(Remind__Message, maxno),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "curno",
+    4,
+    PROTOBUF_C_LABEL_REQUIRED,
+    PROTOBUF_C_TYPE_UINT32,
+    0,   /* quantifier_offset */
+    offsetof(Remind__Message, curno),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "chat",
+    6,
+    PROTOBUF_C_LABEL_REQUIRED,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(Remind__Message, chat),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "user",
+    7,
+    PROTOBUF_C_LABEL_OPTIONAL,
+    PROTOBUF_C_TYPE_STRING,
+    0,   /* quantifier_offset */
+    offsetof(Remind__Message, user),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
+  {
+    "phone",
+    8,
+    PROTOBUF_C_LABEL_OPTIONAL,
     PROTOBUF_C_TYPE_STRING,
     0,   /* quantifier_offset */
     offsetof(Remind__Message, phone),
@@ -277,42 +226,21 @@ static const ProtobufCFieldDescriptor remind__message__field_descriptors[5] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
-  {
-    "text",
-    4,
-    PROTOBUF_C_LABEL_REQUIRED,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    offsetof(Remind__Message, text),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
-  {
-    "people",
-    5,
-    PROTOBUF_C_LABEL_OPTIONAL,
-    PROTOBUF_C_TYPE_STRING,
-    0,   /* quantifier_offset */
-    offsetof(Remind__Message, people),
-    NULL,
-    NULL,
-    0,             /* flags */
-    0,NULL,NULL    /* reserved1,reserved2, etc */
-  },
 };
 static const unsigned remind__message__field_indices_by_name[] = {
-  4,   /* field[4] = people */
-  2,   /* field[2] = phone */
-  3,   /* field[3] = text */
+  4,   /* field[4] = chat */
+  3,   /* field[3] = curno */
+  2,   /* field[2] = maxno */
+  6,   /* field[6] = phone */
   0,   /* field[0] = timestamp */
   1,   /* field[1] = type */
+  5,   /* field[5] = user */
 };
-static const ProtobufCIntRange remind__message__number_ranges[1 + 1] =
+static const ProtobufCIntRange remind__message__number_ranges[2 + 1] =
 {
   { 1, 0 },
-  { 0, 5 }
+  { 6, 4 },
+  { 0, 7 }
 };
 const ProtobufCMessageDescriptor remind__message__descriptor =
 {
@@ -322,10 +250,10 @@ const ProtobufCMessageDescriptor remind__message__descriptor =
   "Remind__Message",
   "remind",
   sizeof(Remind__Message),
-  5,
+  7,
   remind__message__field_descriptors,
   remind__message__field_indices_by_name,
-  1,  remind__message__number_ranges,
+  2,  remind__message__number_ranges,
   (ProtobufCMessageInit) remind__message__init,
   NULL,NULL,NULL    /* reserved[123] */
 };

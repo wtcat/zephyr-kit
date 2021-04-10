@@ -48,6 +48,9 @@
 #include <stdlib.h>	/* for malloc, free */
 #include <string.h>	/* for strcmp, strlen, memcpy, memmove, memset */
 
+#include <logging/log.h>
+LOG_MODULE_REGISTER(protobuf_C);
+
 #include "protobuf-c.h"
 
 #define TRUE				1
@@ -81,7 +84,7 @@
 #define MAX_UINT64_ENCODED_SIZE		10
 
 #ifndef PROTOBUF_C_UNPACK_ERROR
-# define PROTOBUF_C_UNPACK_ERROR(...)
+# define PROTOBUF_C_UNPACK_ERROR(...) LOG_ERR(__VA_ARGS__)
 #endif
 
 const char protobuf_c_empty_string[] = "";
@@ -2135,11 +2138,11 @@ scan_length_prefixed_data(size_t len, const uint8_t *data,
 		// Protobuf messages should always be less than 2 GiB in size.
 		// We also want to return early here so that hdr_len + val does
 		// not overflow on 32-bit systems.
-		PROTOBUF_C_UNPACK_ERROR("length prefix of %lu is too large", val);
+		PROTOBUF_C_UNPACK_ERROR("length prefix of %u is too large", val);
 		return 0;
 	}
 	if (hdr_len + val > len) {
-		PROTOBUF_C_UNPACK_ERROR("data too short after length-prefix of %lu", val);
+		PROTOBUF_C_UNPACK_ERROR("data too short after length-prefix of %u", val);
 		return 0;
 	}
 	return hdr_len + val;

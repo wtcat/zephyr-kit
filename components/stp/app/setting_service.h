@@ -14,7 +14,8 @@ extern "C"{
 /*
  * Setting minor number 
  */
-#define SET_TIME 0x01
+#define SETTING_UPDATE_TIME  0x01
+#define SETTING_SET_ALARM    0x03 
 
 
 /*

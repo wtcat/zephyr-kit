@@ -86,21 +86,23 @@ STP_SERVICE(ota, OPC_CLASS_OTA, OTA_FILE_BKPT, ota_get_breakpoint_service);
 static void ota_data_receive_service(const void *buf, size_t size, 
     struct net_buf *obuf)
 {
-    uint8_t resp[2] = {OTA_FILE_DATA};
+    uint8_t resp[sizeof(struct opc_subhdr) + 1];
+    struct opc_subhdr *hdr = (struct opc_subhdr *)resp;
     uint8_t ret;
 
 #ifdef CONFIG_PROTOBUF
     Ota__File *file = ota__file__unpack(NULL, size, buf);
-    if (file && file->field_case == OTA__FILE__FIELD_DATA) {
+    if (file && file->field_case == OTA__FILE__FIELD_DATA)
         ret = ota_file_receive(&ota_file, file, 0);
-        ota__file__free_unpacked(file, NULL);
-    } else {
+    else
         ret = 0x10;
-    }
+    ota__file__free_unpacked(file, NULL);
 #else
     ret = ota_file_receive(&ota_file, buf, size);
 #endif
-    resp[1] = ret;
+    hdr->minor = OTA_FILE_DATA;
+    hdr->len = ltons(1);
+    hdr->data[0] = ret;
     net_buf_add_mem(obuf, resp, sizeof(resp));
 }
 STP_SERVICE(ota, OPC_CLASS_OTA, OTA_FILE_DATA, ota_data_receive_service);
@@ -108,14 +110,17 @@ STP_SERVICE(ota, OPC_CLASS_OTA, OTA_FILE_DATA, ota_data_receive_service);
 static void ota_checksum_service(const void *buf, size_t size, 
     struct net_buf *obuf)
 {
-    uint8_t resp[2] = {OTA_FILE_CMP};
+    uint8_t resp[sizeof(struct opc_subhdr) + 1];
+    struct opc_subhdr *hdr = (struct opc_subhdr *)resp;
     uint32_t file_crc;
     uint32_t crc;
-    
+
+    hdr->minor = OTA_FILE_CMP;
+    hdr->len = ltons(1);  
 #ifdef CONFIG_PROTOBUF
     Ota__FileCheck *file_chk = ota__file_check__unpack(NULL, size, buf);
     if (!file_chk) {
-        resp[1] = 0x02;
+        hdr->data[0] = 0x02;
         goto _exit;
     }
 
@@ -123,7 +128,7 @@ static void ota_checksum_service(const void *buf, size_t size,
     ota__file_check__free_unpacked(file_chk, NULL);
 #else
     if (size != sizeof(uint32_t)) {
-        resp[1] = 0x01;
+        hdr->data[0] = 0x01;
         goto _exit;
     }
     file_crc = btol(buf);
@@ -132,10 +137,10 @@ static void ota_checksum_service(const void *buf, size_t size,
     if (file_crc != crc) {
         LOG_ERR("%s(): File checksum is error(expect: 0x%x, real: 0x%x)\n",
             __func__, file_crc, crc);
-        resp[1] = 0x02;
+        hdr->data[0] = 0x02;
     } else {
         LOG_INF("File checksum is 0x%x\n", crc);
-        resp[1] = 0x00;
+        hdr->data[0] = 0x00;
     }
 _exit:
     net_buf_add_mem(obuf, resp, sizeof(resp));

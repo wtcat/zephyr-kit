@@ -10,6 +10,8 @@
 
 #include "guix_zephyr_notify.h"
 
+#include "base/observer_class.h"
+
 typedef INT    GX_BOOL;
 typedef SHORT  GX_VALUE;
 
@@ -94,6 +96,17 @@ UINT guix_main(UINT disp_id, struct guix_driver *drv);
  */
 int guix_driver_register(struct guix_driver *drv);
 int gxres_device_register(struct gxres_device *dev);
+
+/*
+ * method:
+ *  int guix_state_notify(unsigned long state, void *ptr)
+ *  int guix_state_add_observer(struct observer_base *obs)
+ *  int guix_state_remove_observer(struct observer_base *obs)
+ */
+#define GUIX_STATE_DOWN 0x00 
+#define GUIX_STATE_UP   0x01 /* GUIX initialize completed */
+
+OBSERVER_CLASS_DECLARE(guix_state)
 
 #ifdef __cplusplus
 }

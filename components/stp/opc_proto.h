@@ -7,6 +7,7 @@
 #include <toolchain.h>
 
 #include "stp/stp.h"
+#include "stp/stp_core.h"
 
 #ifdef __cplusplus
 extern "C"{
@@ -22,6 +23,7 @@ struct opc_hdr {
     uint8_t major;
 } __packed;
 
+#define OPC_SUBHDR_SIZE sizeof(struct opc_subhdr)
 struct opc_subhdr {
     uint8_t minor;
     uint16_t len;
@@ -68,6 +70,9 @@ struct opc_service_node {
 
 #endif /* CONFIG_STP_RBTREE */
 
+#define OPC_MAJOR(_opcode) (((_opcode) >> 8) & 0xFF)
+#define OPC_MINOR(_opcode) ((_opcode) & 0xFF)
+
 #define OPCF_REQ      0x01
 #define OPCF_NOACK    0x02
 #define OPC_CODE(_m, _n) (((uint16_t)(_m) << 8) | (_n))
@@ -79,10 +84,19 @@ struct opc_service_node {
 #define OPC_CLASS_OTA       0x01
 #define OPC_CLASS_INFO      0x02
 #define OPC_CLASS_SETTING   0x03
+#define OPC_CLASS_GPS       0x07
 #define OPC_CLASS_REMIND    0x08
-#define OPC_CLASS_LAST 0x10
+#define OPC_CLASS_CALL      0x09
+#define OPC_CLASS_CAMERA    0x21
+#define OPC_CLASS_MUSIC     0x22
+#define OPC_CLASS_LAST 0xF0
 
 
+#define stp_packet_declare(size) \
+    union {\
+        struct opc_subhdr hdr; \
+        uint32_t buffer[1 + size/4]; \
+    }
 
 #define opc_alloc(size) __builtin_alloca(size)
 
@@ -91,6 +105,15 @@ static inline struct stp_chan *opc_chan_get(int type)
 {
     __ASSERT_NO_MSG(type < OPC_CLASS_LAST);
     return (struct stp_chan *)&opc_chan_aggregation[type].base;
+}
+
+static inline void opc_bufv_init(struct stp_bufv *bv, 
+    struct opc_subhdr *hdr, int minor, size_t size)
+{
+    hdr->minor = (uint8_t)minor;
+    hdr->len = ltons((uint16_t)size);
+    bv->buf = hdr;
+    bv->len = sizeof(struct opc_subhdr) + size;    
 }
 
 #ifdef __cplusplus

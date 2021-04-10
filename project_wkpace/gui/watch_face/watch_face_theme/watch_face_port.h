@@ -18,8 +18,9 @@ typedef enum {
 	CLOCK_SKIN_WEATHER_WINDY,
 	CLOCK_SKIN_WEATHER_SUNNY_NIGHT,
 	CLOCK_SKIN_WEATHER_CLOUDY_NIGHT,
-}weather_type_enum;
+} weather_type_enum;
 
+int watch_face_get_year(void);
 uint8_t watch_face_get_month(void);
 
 uint8_t watch_face_get_hour(void);
@@ -46,6 +47,6 @@ uint16_t watch_face_get_calories(void);
 
 uint8_t watch_face_get_am_pm_type(void);
 
-void  posix_time_update(void);
+void posix_time_update(void);
 
 #endif

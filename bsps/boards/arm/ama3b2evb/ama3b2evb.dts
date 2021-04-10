@@ -6,7 +6,8 @@
  
 /dts-v1/;
 #include <ambiq/apollo3p.dtsi>
-
+#include <ambiq/timer_clock.h>
+#include <dt-bindings/pwm/pwm.h>
 
 / {
 	model = "AmbiqMicro apollo3p board";
@@ -20,6 +21,22 @@
 		zephyr,ccm = &ccm0;
 		zephyr,flash-controller = &flash;
 		zephyr,code-partition = &slot0_partition;
+	};
+	
+	power-states {
+		normal_sleep: state0 {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-idle";
+			substate-id = <0>;
+			min-residency-us = <500>;
+		};
+		
+		deep_sleep: state1 {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-idle";
+			substate-id = <1>;
+			min-residency-us = <2000>;
+		};
 	};
 	
 	soc {
@@ -56,8 +73,20 @@
 		status = "disabled";
 		label = "channel";		   
 	};
-	
+
+	pwmmotor {
+		compatible = "pwm-motors";
+		label = "MOTOR";
+		motor: motor {
+	      pwms = <&pwm0 0 1 PWM_POLARITY_NORMAL>;
+		};
+	};
 };
+
+&cpu0 {
+	cpu-power-states = <&normal_sleep &deep_sleep>;
+};
+
 
 &flash0 {
 	partitions {
@@ -80,6 +109,15 @@
 	};
 };
 
+&ctimer0 {
+	status = "okay";
+	clock_source = <RTC_100HZ>;
+	pwm0: pwm {
+	  ch0_pin = <25>;
+	  ch1_pin = <255>;
+      status = "okay";
+	};
+};
 
 &gpio0 {
     status = "okay";
@@ -123,14 +161,14 @@
 
 &spi4 {
     status = "okay";
-    
+
     lis2dh@1b {
-	compatible = "st,lis2dh";
-	label = "LIS2DH";
-	reg = <0x1b>;
-	spi-max-frequency = <1000000>;
-	/* irq-gpios = <&gpio 0 0>; */
-	/* disconnect-sdo-sa0-pull-up; */
+        compatible = "st,lis2dh";
+        label = "LIS2DH";
+        reg = <0x1b>;
+        spi-max-frequency = <1000000>;
+        /* irq-gpios = <&gpio 0 0>; */
+        /* disconnect-sdo-sa0-pull-up; */
     };
 };
 

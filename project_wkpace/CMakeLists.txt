@@ -18,7 +18,7 @@ include(cmake/proto.cmake)
 # Project name
 project(watch_4g)
 
-target_sources(app PRIVATE version.c)
+target_sources(app PRIVATE version.c empty.c)
 
 # Source files
 add_subdirectory(application)

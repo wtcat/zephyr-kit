@@ -1,425 +1,562 @@
 #include "watch_face_manager.h"
-#include "gx_api.h"
-#include "irq.h"
-#include "sys/slist.h"
-#include <errno.h>
-#include <stdint.h>
-#include <devicetree.h>
-#include <kernel.h>
 
-watch_face_manager_t wf_mgr;
+#define WF_MGR_STORE_USING_SETTING 1
 
-static USHORT      watch_face_theme_pixelmap_table_size;
-static GX_PIXELMAP **watch_face_theme_curr_pixelmap_table;
+extern struct watch_face_theme1_ctl watch_face_theme_1;
 
-static USHORT      watch_face_theme_color_table_size;
-static GX_COLOR    *watch_face_theme_curr_color_table;
+static watch_face_manager_t wf_mgr;
 
-theme_node_t       *curr_theme_node;
+theme_info_t curr_theme_info = {
+	.pixelmap_table_size = 0,
+	.color_table_size = 0,
+	.theme_buff_addr = NULL,
+	.theme_node = NULL,
+};
 
+static struct guix_driver *drv_guix = NULL;
 
-void *ext_flash_map_base = NULL;
+static struct sys_sem sem_lock;
+#define SYNC_INIT() sys_sem_init(&sem_lock, 1, 1)
+#define SYNC_LOCK() sys_sem_take(&sem_lock, K_FOREVER)
+#define SYNC_UNLOCK() sys_sem_give(&sem_lock)
 
-#pragma GCC push_options
-#pragma GCC optimize ("O0")
+//#pragma GCC push_options
+//#pragma GCC optimize ("O0")
+
+static int wf_mgr_data_save(void)
+{
+#if WF_MGR_STORE_USING_SETTING
+	return settings_save_one("setting/watchface/watchfaceMgr", (void *)&wf_mgr,
+							 sizeof(watch_face_manager_t));
+#else
+	const struct flash_area *_fa_p_ext_flash;
+	int rc =
+		flash_area_open(FLASH_AREA_ID(watch_face_manager), &_fa_p_ext_flash);
+	if (rc) // should never happen
+		return -EINVAL;
+
+	flash_area_erase(_fa_p_ext_flash, 0, FLASH_AREA_SIZE(watch_face_manager));
+	flash_area_write(_fa_p_ext_flash, 0, (void *)&wf_mgr,
+					 sizeof(watch_face_manager_t));
+	return 0;
+#endif
+}
+
+#if WF_MGR_STORE_USING_SETTING
+static int wf_mgr_cfg_set(const char *name, size_t len,
+						  settings_read_cb read_cb, void *cb_arg)
+{
+	const char *next;
+	int rc;
+	if (settings_name_steq(name, "watchfaceMgr", &next) && !next) {
+		if (len != sizeof(watch_face_manager_t)) {
+			return -EINVAL;
+		}
+		rc = read_cb(cb_arg, (void *)&wf_mgr, sizeof(watch_face_manager_t));
+		if (rc >= 0) {
+			return 0;
+		}
+		return rc;
+	}
+	return -ENOENT;
+}
+
+struct settings_handler wf_conf = {.name = "setting/watchface",
+								   .h_set = wf_mgr_cfg_set};
+#endif
+
+static int wf_mgr_data_load(void)
+{
+#if WF_MGR_STORE_USING_SETTING
+	int ret = settings_subsys_init();
+	if (ret != 0) {
+		int rc;
+		const struct flash_area *_fa_p_ext_flash;
+		rc = flash_area_open(FLASH_AREA_ID(storage), &_fa_p_ext_flash);
+		if (!rc) {
+			if (!flash_area_erase(_fa_p_ext_flash, 0,
+								  _fa_p_ext_flash->fa_size)) {
+				settings_subsys_init();
+			}
+		}
+	}
+	settings_register(&wf_conf);
+	ret = settings_load_subtree("setting/watchface");
+	return ret;
+#else
+	const struct flash_area *_fa_p_ext_flash;
+	int rc =
+		flash_area_open(FLASH_AREA_ID(watch_face_manager), &_fa_p_ext_flash);
+	if (rc) // should never happen
+		return -EINVAL;
+
+	flash_area_read(_fa_p_ext_flash, 0, (void *)&wf_mgr,
+					sizeof(watch_face_manager_t));
+	return 0;
+#endif
+}
 
 static void watch_face_mgr_default(void)
 {
-    wf_mgr.cnts = 1;
-    wf_mgr.magic_num = WF_MAGIC_NUM;
-    wf_mgr.curr_theme_index = 0;
-    wf_mgr.curr_write_index_of_array = 0;
+	wf_mgr.cnts = 0;
+	wf_mgr.magic_num = WF_MAGIC_NUM;
+	wf_mgr.curr_theme_index = 0;
 
-    #if 0
-    wf_mgr.theme_nodes[0].partition_id = FLASH_AREA_ID(watch_face_1);
-    wf_mgr.theme_nodes[0].theme_ext_or_not = 1;
-    wf_mgr.theme_nodes[0].node.next = NULL;
-    wf_mgr.theme_nodes[0].offset_of_next_node = 0;
-    #else
-    wf_mgr.theme_nodes[0].partition_id = 0;
-    wf_mgr.theme_nodes[0].theme_ext_or_not = 0; //internal theme for test!
-    wf_mgr.theme_nodes[0].node.next = NULL;
-    #endif
+	wf_mgr.curr_write_partition_index = FLASH_AREA_ID(watch_face_1);
 
-    wf_mgr.slist.head = (sys_snode_t *)&wf_mgr.theme_nodes[0];
-    wf_mgr.slist.tail = (sys_snode_t *)&wf_mgr.theme_nodes[0];
-
-    wf_mgr.slist_offset.head_offset = (char *)&wf_mgr.theme_nodes[0] - (char *)&wf_mgr;
-    wf_mgr.slist_offset.tail_offset = (char *)&wf_mgr.theme_nodes[0] - (char *)&wf_mgr;
-
+#if 0
+	wf_mgr_theme_add(FLASH_AREA_ID(watch_face_1));
+#else
+	wf_mgr.theme_nodes[0].uniqueID = watch_face_theme_1.head.wfh_uniqueID;
+	wf_mgr.theme_nodes[0].partition_id = 0xff;
+	wf_mgr.theme_nodes[0].theme_ext_or_not =
+		WF_THEME_STORE_IN_INT; // internal theme.
+	memcpy(wf_mgr.theme_nodes[0].theme_name, watch_face_theme_1.head.name,
+		   sizeof(wf_mgr.theme_nodes[0].theme_name));
+	GX_PIXELMAP *map = NULL;
+	if (0 == gx_context_pixelmap_get(
+				 watch_face_theme_1.head.wfh_thumb_resource_id, &map)) {
+		wf_mgr.theme_nodes[0].thumb_info = *map;
+	}
+	wf_mgr.cnts = 1;
+#endif
 }
 
-
-static void wf_theme_node_relocate(void)
+void wf_mgr_init(struct guix_driver *drv)
 {
-    wf_mgr.slist.head = (sys_snode_t *)(wf_mgr.slist_offset.head_offset + (char *)&wf_mgr);
-    wf_mgr.slist.tail = (sys_snode_t *)(wf_mgr.slist_offset.tail_offset + (char *)&wf_mgr);
+	SYNC_INIT();
 
-    theme_node_t * curr = (theme_node_t *)wf_mgr.slist.head;
-    do {
-        if (curr->offset_of_next_node){
-            curr->node.next = (sys_snode_t *)(curr->offset_of_next_node + (char *)&wf_mgr);
-        } else {
-            return;
-        }
-    }while(1);
+	wf_theme_init();
+
+	SYNC_LOCK();
+
+	drv_guix = drv;
+
+	wf_mgr_data_load();
+
+	if (wf_mgr.magic_num != WF_MAGIC_NUM) {
+		watch_face_mgr_default();
+		wf_mgr_data_save();
+	}
+
+	SYNC_UNLOCK();
+
+	// wf_mgr_theme_style_edit(0, 16, ELEMENT_EDIT_TYPE_POS, 290 | (220 << 16));
 }
 
-void watch_face_mgr_init(void * map_base)
+uint8_t wf_mgr_cnts_get(void)
 {
-    ext_flash_map_base = map_base;
-    const struct flash_area *_fa_p_ext_flash;
-	int rc = flash_area_open(FLASH_AREA_ID(watch_face_manager), 
-                                &_fa_p_ext_flash);
-    if (rc)
-        return;
-    flash_area_read(_fa_p_ext_flash, 0, (void *)&wf_mgr, 
-                        sizeof(watch_face_manager_t));  
-    if (wf_mgr.magic_num != WF_MAGIC_NUM){
-        watch_face_mgr_default();
-        flash_area_erase(_fa_p_ext_flash, 0, 
-                            FLASH_AREA_SIZE(watch_face_manager));
-        flash_area_write(_fa_p_ext_flash, 0, (void *)&wf_mgr, 
-                                    sizeof(watch_face_manager_t));
-    }
-    
-    wf_theme_node_relocate();
-
-    watch_face_mgr_theme_select(wf_mgr.curr_theme_index);
+	SYNC_LOCK();
+	uint8_t cnts = wf_mgr.cnts;
+	SYNC_UNLOCK();
+	return cnts;
 }
 
-//get installed theme cnts
-int watch_face_mgr_cnts_get(void)
+// used return true,else return false.
+static bool wf_theme_partition_used(uint8_t partition_id)
 {
-    return wf_mgr.cnts;
+	uint8_t node_id;
+
+	for (node_id = 0; node_id < wf_mgr.cnts; node_id++) {
+		if (wf_mgr.theme_nodes[node_id].partition_id == partition_id) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
-static theme_node_t * watch_face_theme_get_node(uint8_t index)
+static theme_node_t *watch_face_theme_get_node(uint8_t index)
 {
-    uint8_t index_tmp = 0;
-    theme_node_t *curr = (theme_node_t *)sys_slist_peek_head(&wf_mgr.slist);
-
-    if (curr == NULL) {
-        return NULL;
-    }
-
-    do{
-        if (index_tmp == index){
-            return (theme_node_t *)&curr->node;
-        } else {
-            if (curr->node.next != NULL){
-                curr = (theme_node_t *)curr->node.next;
-                index_tmp++;
-            } else { //find error!return head node
-                return (theme_node_t *)sys_slist_peek_head(&wf_mgr.slist);
-            }            
-        }
-    }while(1);
-
-    //should never go here!
-    curr = (theme_node_t *)sys_slist_peek_head(&wf_mgr.slist);
-
-    return curr;
+	return &wf_mgr.theme_nodes[index];
 }
 
-extern struct watch_face_theme1_ctl watch_face_theme_1;
-extern void *flash_xip_mmap(size_t size);
-extern void flash_xip_ummap(void *ptr);
-
-int watch_face_mgr_theme_select(uint8_t theme_id)
+static int parse_theme_info(uint8_t partition_id, GX_THEME **theme_parsed,
+							struct watch_face_header *wf_head,
+							void **theme_alloc_addr)
 {
-    if (theme_id > wf_mgr.cnts - 1){
-        return -EINVAL;
-    } else {
-        theme_node_t *node = watch_face_theme_get_node(theme_id);
+	const struct flash_area *_fa_p_ext_flash;
+	if (flash_area_open(partition_id, &_fa_p_ext_flash)) {
+		return -EINVAL;
+	}
 
-        if (node == NULL){
-            return -EFAULT;
-        }
+	void *addr = drv_guix->dev->mmap(~0u);
+	if (addr == INVALID_MAP_ADDR) {
+		return -EINVAL;
+	}
 
-        if (0 != node->theme_ext_or_not) {
-            const struct flash_area *_fa_p_ext_flash;
-            int rc = flash_area_open(node->partition_id, &_fa_p_ext_flash);
-            if (0 == rc){
-                void * addr = ext_flash_map_base;
+	uint32_t offset = _fa_p_ext_flash->fa_off;
+	if (wf_theme_head_parse((unsigned char *)addr + offset, wf_head)) {
+		drv_guix->dev->unmap(addr);
+		return -EINVAL;
+	}
 
-                uint32_t offset = _fa_p_ext_flash->fa_off;
+	offset += wf_theme_hdr_size_get();
 
-                if (watch_face_theme_init((unsigned char *)addr + offset)){
-                    return -EFAULT;
-                }
-                offset += watch_face_theme_hdr_size_get();
+	GX_THEME *theme;
+	unsigned int ret = custom_binres_theme_load((unsigned char *)addr + offset,
+												0, &theme, theme_alloc_addr);
 
-                GX_THEME *theme;
-                unsigned int ret = gx_binres_theme_load((unsigned char *)addr + offset, 0, &theme);
-                if (ret != GX_SUCCESS) {
-                    return -EFAULT;
-                }
+	drv_guix->dev->unmap(addr);
 
-                watch_face_theme_curr_pixelmap_table = theme->theme_pixelmap_table;
-                watch_face_theme_pixelmap_table_size = theme->theme_pixelmap_table_size;
-
-                watch_face_theme_curr_color_table    = theme->theme_color_table;
-                watch_face_theme_color_table_size    = theme->theme_color_table_size;
-            } else {
-                return -EFAULT;
-            }
-        } else {
-            watch_face_theme_init((void *)&watch_face_theme_1);
-        }
-        wf_mgr.curr_theme_index = theme_id;
-
-        curr_theme_node = node;
-    }
-    return 0;
+	if (ret != GX_SUCCESS) {
+		return -EINVAL;
+	} else {
+		*theme_parsed = theme;
+		return 0;
+	}
 }
 
-//return partition id for write, if return 0xff,ext flash is full!
-uint8_t watch_face_mgr_get_free_partition(void)
+static int wf_mgr_theme_active(theme_node_t *node, GX_WIDGET *widget)
 {
-    if (wf_mgr.cnts >=WF_THEME_MAX_CNTS){
-        return 0xff;
-    }
+	int rc;
+	if (node->theme_ext_or_not) {
+		uint8_t partition_id = node->partition_id;
+		const struct flash_area *_fa_p_ext_flash;
+		if (flash_area_open(partition_id, &_fa_p_ext_flash)) {
+			return -EINVAL;
+		}
 
-    uint8_t write_index = wf_mgr.curr_write_index_of_array + 1;
-    uint8_t partition_id = 0xff;
+		void *addr = drv_guix->dev->mmap(~0u);
+		if (addr == INVALID_MAP_ADDR) {
+			return -EINVAL;
+		}
 
-    if (write_index >= WF_THEME_MAX_CNTS){
-        write_index  = 0;
-    }
+		uint32_t offset = _fa_p_ext_flash->fa_off;
+		rc = wf_theme_active((unsigned char *)addr + offset, widget);
+		drv_guix->dev->unmap(addr);
+	} else {
+		rc = wf_theme_active((void *)&watch_face_theme_1, widget);
+	}
 
-    do {
-        switch (write_index) {
-            case 0:
-                partition_id = FLASH_AREA_ID(watch_face_1);
-                break;
-            case 1:
-                partition_id = FLASH_AREA_ID(watch_face_2);
-                break;
-            case 2:
-                partition_id = FLASH_AREA_ID(watch_face_3);
-                break;
-            case 3:
-                partition_id = FLASH_AREA_ID(watch_face_4);
-                break;
-            case 4:
-                partition_id = FLASH_AREA_ID(watch_face_5);
-                break;
-            default:
-                break;
-        }
-
-        theme_node_t *curr = (theme_node_t *)sys_slist_peek_head(&wf_mgr.slist);
-        while(1){
-            if (curr->partition_id == partition_id){
-                break;
-            } else {
-                if (NULL != curr->node.next){
-                    curr = (theme_node_t *)curr->node.next;
-                } else {
-                    return partition_id;
-                }
-            }
-        }
-
-        write_index ++;
-        if (write_index >= 5){
-            write_index  = 0;
-        }
-        
-    } while (1);
-
-    return 0xff;
+	return rc;
 }
 
-//return partition id, 
-int watch_face_mgr_theme_add(uint8_t partition_id)
+uint8_t wf_mgr_get_default_id(void)
 {
-    //TODO: we should check partition is a valiable theme??
-    wf_mgr.cnts += 1;
-
-    switch (partition_id) {
-        case FLASH_AREA_ID(watch_face_1):
-            wf_mgr.curr_write_index_of_array = 0;
-            break;
-        case FLASH_AREA_ID(watch_face_2):
-            wf_mgr.curr_write_index_of_array = 1;
-            break;
-        case FLASH_AREA_ID(watch_face_3):
-            wf_mgr.curr_write_index_of_array = 2;
-            break;
-        case FLASH_AREA_ID(watch_face_4):
-            wf_mgr.curr_write_index_of_array = 3;
-            break;
-        case FLASH_AREA_ID(watch_face_5):
-            wf_mgr.curr_write_index_of_array = 4;
-            break;
-        default:
-            break;
-    }
-    uint8_t write_index = wf_mgr.curr_write_index_of_array;
-
-    wf_mgr.theme_nodes[write_index].partition_id = partition_id;
-    wf_mgr.theme_nodes[write_index].theme_ext_or_not = partition_id == 0xff ? 0 : 1;
-
-    //calc offset of snode from wf_mgr.
-    uint32_t offset = (char *)&wf_mgr.theme_nodes[write_index] - (char *)&wf_mgr;
-    if (sys_slist_peek_tail(&wf_mgr.slist)){
-        z_slist_head_set(&wf_mgr.slist, 
-                            (sys_snode_t *)&wf_mgr.theme_nodes[write_index]);
-        wf_mgr.slist_offset.head_offset = offset;
-        
-        z_slist_tail_set(&wf_mgr.slist, 
-                            (sys_snode_t *)&wf_mgr.theme_nodes[write_index]);
-        wf_mgr.slist_offset.tail_offset =offset;
-
-    } else {
-        theme_node_t * tail =  (theme_node_t *)sys_slist_peek_tail(&wf_mgr.slist);
-        z_snode_next_set((sys_snode_t *)tail, 
-                            (sys_snode_t *)&wf_mgr.theme_nodes[write_index]);
-        tail->offset_of_next_node = offset;
-        
-        z_slist_tail_set(&wf_mgr.slist,
-                            (sys_snode_t *)&wf_mgr.theme_nodes[write_index]);
-        wf_mgr.slist_offset.tail_offset =offset;
-    }
-
-    //we should write wf_mgr info to manager partition at once!
-    const struct flash_area *_fa_p_ext_flash;
-	int rc = flash_area_open(FLASH_AREA_ID(watch_face_manager), 
-                                &_fa_p_ext_flash);
-    if (0 == rc){
-        flash_area_erase(_fa_p_ext_flash, 0, FLASH_AREA_SIZE(watch_face_manager));
-        flash_area_write(_fa_p_ext_flash, 0, (void *)&wf_mgr, sizeof(watch_face_manager_t));
-    }
-
-    return 0;
+	return wf_mgr.curr_theme_index;
 }
 
-//remove from wf_mgr only, theme's partition will erase when add new theme 
-int watch_face_mgr_theme_remove(uint8_t theme_id)
+// if theme_id select fail,it will keep old select.
+int wf_mgr_theme_select(uint8_t theme_id, GX_WIDGET *widget)
 {
-    uint8_t remove_ok = 0;
-    
-    if (theme_id >= 5) {
-        return -EFAULT;
-    }
+	SYNC_LOCK();
+	if (theme_id > wf_mgr.cnts - 1) {
+		SYNC_UNLOCK();
+		return -EINVAL;
+	}
+	void *theme_buff_addr_backup = curr_theme_info.theme_buff_addr;
+#if 0
+	// reset pixelmap table and color table
+	curr_theme_info.pixelmap_table = NULL;
+	curr_theme_info.pixelmap_table_size = 0;
+	curr_theme_info.color_table = NULL;
+	curr_theme_info.color_table_size = 0;
+	custom_binres_theme_unload(
+		&curr_theme_info.theme_buff_addr); // free old theme info
+#endif
+	theme_node_t *node = watch_face_theme_get_node(theme_id);
+	if (WF_THEME_STORE_IN_EXT == node->theme_ext_or_not) {
+		GX_THEME *theme;
+		struct watch_face_header wf_head;
+		if (0 == parse_theme_info(node->partition_id, &theme, &wf_head,
+								  &curr_theme_info.theme_buff_addr)) {
+			curr_theme_info.pixelmap_table = theme->theme_pixelmap_table;
+			curr_theme_info.pixelmap_table_size =
+				theme->theme_pixelmap_table_size;
+			curr_theme_info.color_table = theme->theme_color_table;
+			curr_theme_info.color_table_size = theme->theme_color_table_size;
+			custom_binres_theme_unload(&theme_buff_addr_backup); // free old
+		} else { // should never happen,since it was checked when add.
+			SYNC_UNLOCK();
+			wf_mgr_theme_remove(theme_id);
+			if (curr_theme_info.theme_buff_addr != theme_buff_addr_backup) {
+				printk("err! %s:%s[%d]\n", __FILE__, __FUNCTION__, __LINE__);
+				curr_theme_info.theme_buff_addr = theme_buff_addr_backup;
+			}
+			return -EINVAL;
+		}
+	}
+	wf_mgr.curr_theme_index = theme_id;
+	curr_theme_info.theme_node = node;
+	SYNC_UNLOCK();
 
-    sys_snode_t *node = (sys_snode_t *)watch_face_theme_get_node(theme_id);
+	if (!wf_mgr_theme_active(node, widget)) {
+		wf_mgr_custom_cfg_t cfg;
+		cfg.element_cnts = 0; // must first set to 0
+		if (!wf_theme_custom_setting_load(curr_theme_info.theme_node->uniqueID,
+										  &cfg)) {
+			for (uint8_t i = 0; i < cfg.element_cnts; i++) {
+				struct element_edit_cfg *tmp = &cfg.element_cfg_nodes[i];
+				wf_theme_style_sync(tmp->element_id, tmp->edit_type,
+									tmp->value);
+			}
+		}
+		return 0;
+	}
 
-    sys_snode_t *prev = NULL;
-    sys_snode_t *test;
-    
-    for (test = sys_slist_peek_head(&wf_mgr.slist); test != NULL;
-                                    test = sys_slist_peek_next(test))
-    {
-        if (test == node) {
-
-            if (prev == NULL) {
-                z_slist_head_set(&wf_mgr.slist,z_snode_next_peek(node));
-                wf_mgr.slist_offset.head_offset = 
-                            ((theme_node_t *)node)->offset_of_next_node;
-
-                /* Was node also the tail? */
-                if (sys_slist_peek_tail(&wf_mgr.slist) == node) {
-                    z_slist_tail_set(&wf_mgr.slist,sys_slist_peek_head(&wf_mgr.slist));
-                    wf_mgr.slist_offset.tail_offset =
-                            ((theme_node_t *)node)->offset_of_next_node;;
-                }
-            } else {
-                z_snode_next_set(prev, z_snode_next_peek(node));
-                ((theme_node_t *)prev)->offset_of_next_node = 
-                            ((theme_node_t *)node)->offset_of_next_node;
-
-                /* Was node the tail? */			      \
-                if (sys_slist_peek_tail(&wf_mgr.slist) == node) {
-                    z_slist_tail_set(&wf_mgr.slist, prev);
-                    wf_mgr.slist_offset.tail_offset = (char *)prev - (char *)&wf_mgr;
-                }
-            }
-            z_snode_next_set(node, NULL);
-            ((theme_node_t *)node)->offset_of_next_node = 0;
-            remove_ok = 1;
-            break;
-        }
-        prev = test;
-    }
-
-    if (remove_ok) {
-        const struct flash_area *_fa_p_ext_flash;
-        int rc = flash_area_open(FLASH_AREA_ID(watch_face_manager), 
-                                    &_fa_p_ext_flash);
-        if (0 == rc){
-            flash_area_erase(_fa_p_ext_flash, 0, FLASH_AREA_SIZE(watch_face_manager));
-            flash_area_write(_fa_p_ext_flash, 0, (void *)&wf_mgr, sizeof(watch_face_manager_t));
-            return 0;
-        }
-    }
-    return EFAULT;
+	return -EINVAL;
 }
-#pragma GCC pop_options
 
-//for other menu to show thumb info
-int watch_face_mgr_theme_thumb_get(uint8_t theme_id, void * addr)
+// return partition id for write, if return 0xff,ext flash is full!
+int wf_mgr_get_free_partition(uint8_t *partition_id)
 {
-    if (theme_id >= 5) {
-        return -EFAULT;
-    }
-    return 1;
+	int ret = 0;
+	SYNC_LOCK();
+	if (wf_mgr.cnts >= WF_THEME_MAX_CNTS) {
+		ret = -ENOSPC;
+		goto final;
+	}
+
+	uint8_t partition_id_test =
+		wf_mgr.curr_write_partition_index < WF_MAX_PARTITION_ID
+			? wf_mgr.curr_write_partition_index + 1
+			: WF_MIN_PARTITION_ID;
+
+	uint8_t retry_cnts;
+	for (retry_cnts = 0; retry_cnts < WF_THEME_MAX_CNTS; retry_cnts++) {
+		if (false == wf_theme_partition_used(partition_id_test)) {
+			*partition_id = partition_id_test;
+			ret = 0;
+			goto final;
+		}
+		if (partition_id_test < WF_MAX_PARTITION_ID) {
+			partition_id_test++;
+		} else {
+			partition_id_test = WF_MIN_PARTITION_ID;
+		}
+	}
+	ret = -ENOSPC;
+
+final:
+	SYNC_UNLOCK();
+	return ret;
 }
 
-//get GX_PIXELMAP from current theme.
-int _watch_face_pixelmap_get(uint32_t index, void ** addr)
+int wf_mgr_theme_add(uint8_t partition_id)
 {
-    if (0 == curr_theme_node->theme_ext_or_not){ //internal theme
-        return gx_context_pixelmap_get(index, (GX_PIXELMAP **)addr);
-    } else { //load pixelmap from ext flash
-        if (index < watch_face_theme_pixelmap_table_size) {
-            *addr = watch_face_theme_curr_pixelmap_table[index];
-        } else {
-            *addr = NULL;
-        }
-        return 0;
-    }
+	SYNC_LOCK();
+	if (wf_mgr.cnts >= WF_THEME_MAX_CNTS) {
+		SYNC_UNLOCK();
+		return -ENOSPC;
+	}
+
+	int ret = 0;
+	GX_THEME *theme;
+	void *buff_addr = NULL;
+	struct watch_face_header wf_head;
+	if (!parse_theme_info(partition_id, &theme, &wf_head, &buff_addr)) {
+		for (uint8_t i = 0; i < wf_mgr.cnts; i++) {
+			if (wf_head.wfh_uniqueID == wf_mgr.theme_nodes[i].uniqueID) {
+				ret = -EINVAL; // attempt to install an	 exit theme!
+				goto final;
+			}
+		}
+		uint8_t index = wf_mgr.cnts;
+		theme_node_t *node = &wf_mgr.theme_nodes[index];
+		memcpy(node->theme_name, wf_head.name, sizeof(node->theme_name));
+		node->thumb_info =
+			*theme->theme_pixelmap_table[wf_head.wfh_thumb_resource_id];
+		node->uniqueID = wf_head.wfh_uniqueID;
+		node->partition_id = partition_id;
+		node->theme_ext_or_not = WF_THEME_STORE_IN_EXT;
+		wf_mgr.curr_write_partition_index = partition_id;
+		wf_mgr.cnts += 1;
+		wf_mgr_data_save();
+	} else {
+		ret = -EINVAL;
+	}
+final:
+	if (buff_addr != NULL) {
+		custom_binres_theme_unload(&buff_addr);
+	}
+	SYNC_UNLOCK();
+	return ret;
 }
 
-//get GX_COLOR from current theme.
-int _watch_face_color_get(uint32_t index, void * addr)
+// remove from wf_mgr only, theme's partition will erase when add new theme
+// if u want remove current useing theme, you should first call
+// watch_face_mgr_theme_select to select a new theme, then u can call
+// watch_face_mgr_theme_remove to remove it.
+int wf_mgr_theme_remove(uint8_t theme_id)
 {
-    if (0 == curr_theme_node->theme_ext_or_not){ //internal theme
-        return gx_context_color_get(index, addr);
-    } else { //load pixelmap from ext flash
-        if (index < watch_face_theme_color_table_size){
-            *(GX_COLOR *)addr = watch_face_theme_curr_color_table[index];
-        } else {
-            *(GX_COLOR *)addr = 0;
-        }
-        return 0;
-    }
+	int rc = 0;
+	SYNC_LOCK();
+	if (theme_id >= wf_mgr.cnts) {
+		rc = -EINVAL;
+		goto final;
+	}
+
+	uint8_t curr_theme_index_old = wf_mgr.curr_theme_index;
+	if (curr_theme_index_old > theme_id) {
+		curr_theme_index_old -= 1;
+	} else if (curr_theme_index_old == theme_id) {
+		printk("ERR: remove a using theme!\n");
+		rc = -EINVAL;
+		goto final;
+	}
+	wf_mgr.curr_theme_index = curr_theme_index_old;
+	for (uint8_t i = theme_id; i < wf_mgr.cnts; i++) {
+		wf_mgr.theme_nodes[i] = wf_mgr.theme_nodes[i + 1];
+	}
+	curr_theme_info.theme_node = &wf_mgr.theme_nodes[wf_mgr.curr_theme_index];
+	wf_mgr.cnts -= 1;
+	wf_mgr_data_save();
+final:
+	SYNC_UNLOCK();
+	return rc;
 }
+//#pragma GCC pop_options
 
-
-extern void _watch_face_draw_main(GX_WINDOW* widget);
-void watch_face_theme_show(GX_WINDOW* widget)
+// TODO: need impement
+int wf_mgr_theme_thumb_get(uint8_t theme_id, GX_PIXELMAP **map)
 {
-    #if 0
-    #ifndef CONFIG_GUI_SPLIT_BINRES
-    void * addr = NULL;
-    if (curr_theme_node->theme_ext_or_not){
-        addr = flash_xip_mmap(~0u);
-    }
-    #endif
-
-    _watch_face_draw_main(widget);
-
-    #ifndef CONFIG_GUI_SPLIT_BINRES
-    if (curr_theme_node->theme_ext_or_not){
-       flash_xip_ummap(addr);
-    }
-    #endif
-    #else
-    _watch_face_draw_main(widget);
-    #endif
-
+	SYNC_LOCK();
+	if (theme_id >= WF_THEME_MAX_CNTS) {
+		SYNC_UNLOCK();
+		return -EINVAL;
+	}
+	*map = &wf_mgr.theme_nodes[theme_id].thumb_info;
+	SYNC_UNLOCK();
+	return 0;
 }
 
+int wf_mgr_theme_name_get(uint8_t theme_id, char **name, uint8_t length_max)
+{
+	SYNC_LOCK();
+	if (theme_id >= WF_THEME_MAX_CNTS) {
+		SYNC_UNLOCK();
+		return -EINVAL;
+	}
+	*name = wf_mgr.theme_nodes[theme_id].theme_name;
+	SYNC_UNLOCK();
+	return 0;
+}
+
+// get GX_PIXELMAP from current theme.
+int watch_face_pixelmap_get(uint32_t index, void **addr)
+{
+	SYNC_LOCK();
+
+	int rc = 0;
+	if (NULL == curr_theme_info.theme_node) {
+		*addr = NULL;
+		rc = -EINVAL;
+		goto final;
+	}
+
+	if (WF_THEME_STORE_IN_INT ==
+		curr_theme_info.theme_node->theme_ext_or_not) { // internal theme
+		rc = gx_context_pixelmap_get(index, (GX_PIXELMAP **)addr);
+	} else { // load pixelmap from ext flash
+		if (index < curr_theme_info.pixelmap_table_size) {
+			*addr = curr_theme_info.pixelmap_table[index];
+		} else {
+			*addr = NULL;
+			rc = -EINVAL;
+		}
+	}
+final:
+	SYNC_UNLOCK();
+	return rc;
+}
+
+// get GX_COLOR from current theme.
+int watch_face_color_get(uint32_t index, void *addr)
+{
+	SYNC_LOCK();
+	int rc = 0;
+	if (NULL == curr_theme_info.theme_node) {
+		*(GX_COLOR *)addr = 0;
+		rc = -EINVAL;
+		goto final;
+	}
+
+	if (WF_THEME_STORE_IN_INT == curr_theme_info.theme_node->theme_ext_or_not) {
+		rc = gx_context_color_get(index, addr);
+	} else { // load pixelmap from ext flash
+		if (index < curr_theme_info.color_table_size) {
+			*(GX_COLOR *)addr = curr_theme_info.color_table[index];
+			rc = 0;
+		} else {
+			*(GX_COLOR *)addr = 0;
+			rc = -EINVAL;
+		}
+	}
+final:
+	SYNC_UNLOCK();
+	return rc;
+}
+
+void wf_theme_show(GX_WINDOW *widget)
+{
+#if 0
+	posix_time_update();
+
+	uint8_t element_cnts = wf_theme_element_cnts_get();
+	struct wf_element_style *styles_to_show = wf_theme_element_styles_get();
+	for (uint8_t i = 0; i < element_cnts; i++) {
+		struct wf_element_style *curr = &styles_to_show[i];
+		if (true == curr->hidden_flag) {
+			continue;
+		}
+		switch (curr->e_disp_tpye) {
+		case ELEMENT_DISP_TYPE_SINGLE_IMG:
+			wf_draw_single_img(curr, widget);
+			break;
+		case ELEMENT_DISP_TYPE_MULTI_IMG_1:
+			wf_draw_multi_img_one(curr, widget);
+			break;
+		case ELEMENT_DISP_TYPE_MULTI_IMG_N:
+			wf_draw_multi_img_n(curr, widget);
+			break;
+		case ELEMENT_DISP_TYPE_ARC_PROGRESS_BAR:
+			wf_draw_arc(curr, widget);
+			break;
+		default:
+			break;
+		}
+	}
+#endif
+	gx_widget_children_draw(widget);
+}
+
+int wf_mgr_theme_style_edit(uint32_t theme_sequence_id, uint8_t element_id,
+							uint8_t type, uint32_t value)
+{
+	wf_mgr_custom_cfg_t cfg;
+	cfg.element_cnts = 0;
+
+	int rc = wf_theme_custom_setting_load(theme_sequence_id, &cfg);
+
+	if (0 == rc) {
+		for (uint8_t i = 0; i < cfg.element_cnts; i++) {
+			struct element_edit_cfg *tmp = &cfg.element_cfg_nodes[i];
+			if ((tmp->element_id == element_id) &&
+				(tmp->edit_type == type)) { // find it!
+				tmp->value = value;
+				if (theme_sequence_id == curr_theme_info.theme_node->uniqueID) {
+					wf_theme_style_sync(element_id, type, value);
+				}
+				wf_theme_custom_setting_save(theme_sequence_id, &cfg);
+				return 0;
+			}
+		}
+	} else { // load fail, give a default value
+		cfg.element_cnts = 0;
+	}
+
+	if (cfg.element_cnts < WF_THEME_CUSTOM_MAX_CNT) { // add it to array
+		cfg.element_cfg_nodes[cfg.element_cnts].edit_type = type;
+		cfg.element_cfg_nodes[cfg.element_cnts].element_id = element_id;
+		cfg.element_cfg_nodes[cfg.element_cnts].value = value;
+		cfg.element_cnts += 1;
+		if (theme_sequence_id == curr_theme_info.theme_node->uniqueID) {
+			wf_theme_style_sync(element_id, type, value);
+		}
+		wf_theme_custom_setting_save(theme_sequence_id, &cfg);
+		return 0;
+	}
+
+	return -EINVAL;
+}

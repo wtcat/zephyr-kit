@@ -5,7 +5,7 @@ package setting;
 option optimize_for=SPEED;
 
 message Time {
-    required fixed32 unix_timestamp : 1; //Unix timestamp
+    required fixed32 unix_timestamp = 1; //Unix timestamp
 }
 
 message Alarm {
@@ -13,10 +13,45 @@ message Alarm {
         required uint32 hour = 1;
         required uint32 min = 2;
         required uint32 sec = 3;
-        required uint32 weekbits = 4; //Monday(0x01), Tuesday(0x02),..., Sunday(0x40)
+
+        enum WeekDay {
+            MONDAY    = 0x01;
+            TUESDAY   = 0x02;
+            WEDNESDAY = 0x04;
+            THURSDAY  = 0x08;
+            FRIDAY    = 0x10;
+            SATURDAY  = 0x20;
+            SUNDAY    = 0x40;
+        }
+        required uint32 weekdays = 4;
         required bool repeat = 5;
     }
     repeated Body entities = 1;
+}
+
+message Silence {
+    enum State {
+        DISABLE = 0;
+        ENABLE  = 1;
+    }
+    required State enable = 1 [default = DISABLE];
+
+    message Time {
+        required uint32 hour_start = 1;
+        required uint32 min_start = 2;
+        required uint32 hour_end = 3;
+        required uint32 min_end = 4;
+    }
+    repeated Time time = 2;
+}
+
+message RemindMode {
+    enum Mode {
+        DEFAULT = 0x00;
+        SHAKE   = 0x01;
+        DISPLAY = 0x02;
+    }
+    required Mode mode = 1 [default = DEFAULT];
 }
 
 

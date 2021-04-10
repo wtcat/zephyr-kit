@@ -9,4 +9,5 @@ add_subdirectory(protobuf-c)
 add_subdirectory_ifdef(CONFIG_GUIX gui)
 add_subdirectory_ifdef(CONFIG_BLE_COMPONENT ble)
 add_subdirectory_ifdef(CONFIG_BLE_COMPONENT uecc)
+add_subdirectory_ifdef(CONFIG_SERVICE services)
 

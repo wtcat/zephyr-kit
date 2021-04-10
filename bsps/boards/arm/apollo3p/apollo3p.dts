@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
- 
+
 /dts-v1/;
 #include <ambiq/apollo3p.dtsi>
 
@@ -11,7 +11,7 @@
 / {
 	model = "AmbiqMicro apollo3p board";
 	compatible = "ambiq,apollo3p";
-	
+
 	chosen {
 		zephyr,console = &uart0;
 		zephyr,shell-uart = &uart0;
@@ -20,6 +20,22 @@
 		zephyr,ccm = &ccm0;
 		zephyr,flash-controller = &flash;
 		zephyr,code-partition = &slot0_partition;
+	};
+
+	power-states {
+		normal_sleep: state0 {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-idle";
+			substate-id = <0>;
+			min-residency-us = <500>;
+		};
+		
+		deep_sleep: state1 {
+			compatible = "zephyr,power-state";
+			power-state-name = "suspend-to-idle";
+			substate-id = <1>;
+			min-residency-us = <2000>;
+		};
 	};
 	
 	soc {
@@ -42,9 +58,36 @@
 				label = "update-img";
 				reg = <0x0 DT_SIZE_K(2048)>;
 			};
-			user_partition: partition@200000 {
+
+			watch_face_theme1_partition: partition@200000 {
+				label = "watch-face-1";
+				reg = <0x200000 DT_SIZE_K(2048)>;
+			};
+			watch_face_theme2_partition: partition@400000 {
+				label = "watch-face-2";
+				reg = <0x400000 DT_SIZE_K(2048)>;
+			};
+			watch_face_theme3_partition: partition@600000 {
+				label = "watch-face-3";
+				reg = <0x600000 DT_SIZE_K(2048)>;
+			};
+			watch_face_theme4_partition: partition@800000 {
+				label = "watch-face-4";
+				reg = <0x800000 DT_SIZE_K(2048)>;
+			};
+			watch_face_theme5_partition: partition@A00000 {
+				label = "watch-face-5";
+				reg = <0xA00000 DT_SIZE_K(2048)>;
+			};
+
+			storage_partition: partition@C00000 {
+				label = "storage";
+				reg = <0xC00000 DT_SIZE_K(2048)>;
+			};
+
+			user_partition: partition@E00000 {
 				label = "user-date";
-				reg = <0x200000 DT_SIZE_K(62*1024)>;
+				reg = <0xE00000 DT_SIZE_K(50*1024)>;
 			};
 		};
 	};
@@ -114,7 +157,7 @@
 
 &spi4 {
     status = "okay";
-    
+
     lis2dh@1b {
 	compatible = "st,lis2dh";
 	label = "LIS2DH";

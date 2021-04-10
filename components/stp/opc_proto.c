@@ -80,6 +80,22 @@ static void static_tree_init(struct static_btree *tree)
     tree->count = size / tree->size;
 }
 
+static bool static_tree_check(void)
+{
+    struct opc_service_node *previous = __stp_node_start;
+    struct opc_service_node *current = __stp_node_start + 1;
+    while (current < __stp_node_end) {
+        if (current->opcode == previous->opcode) {
+            LOG_ERR("%s(): protocol tree conflicted(major: %d, minor: %d)\n", 
+                __func__, OPC_MAJOR(current->opcode), OPC_MINOR(current->opcode));
+            return false;
+        }
+        previous = current;
+        current++;
+    }
+    return true;
+}
+
 static int compare(const void *a, const void *b)
 { 
     const struct opc_service_node *left = 
@@ -176,9 +192,8 @@ static int opc_input(struct net_buf *buf)
 
     if (attr->require_ack) {
         resp_buf = opc_alloc_buf(&stp_pool, sizeof(struct opc_hdr));
-        if (!buf) {
+        if (!buf) 
             LOG_ERR("%s(): No more memory\n", __func__);
-        }
     } else {
         resp_buf = NULL;
     }
@@ -189,17 +204,15 @@ static int opc_input(struct net_buf *buf)
     while (buf->len >= len) {
         uint16_t opcode =   ((uint16_t)hdr->major << 8) | sub->minor;
         handle = opc_find_handle(&root, opcode);
-        if (handle) {
+        if (handle)
             handle->action(sub->data, len, resp_buf);
-        }
-
         sub = net_buf_pull(buf, len);
         if (!buf->len)
             break;
         len = ntols(sub->len);
     }
     net_buf_unref(buf);
-    if (resp_buf) {
+    if (resp_buf && resp_buf->len) {
         struct stpbuf_attr *resp_attr = net_buf_user_data(resp_buf);
         resp_attr->require_ack = 0;
         resp_attr->request = 0;
@@ -244,6 +257,8 @@ static int opc_init(const struct device *dev)
         opc_node_register(node);
     }
 #else
+    if (!static_tree_check()) 
+        return -EINVAL;
     static_tree_init(&root);
 #endif /* CONFIG_STP_RBTREE */
     return 0;

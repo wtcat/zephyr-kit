@@ -36,6 +36,12 @@ typedef enum _Info__Device__Model {
   INFO__DEVICE__MODEL__DM_APOLLO3P = 1
     PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(INFO__DEVICE__MODEL)
 } Info__Device__Model;
+typedef enum _Info__Battery__Status {
+  INFO__BATTERY__STATUS__IDLE = 0,
+  INFO__BATTERY__STATUS__CHARGING = 1,
+  INFO__BATTERY__STATUS__CHARGE_COMPLETED = 2
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(INFO__BATTERY__STATUS)
+} Info__Battery__Status;
 
 /* --- messages --- */
 
@@ -82,13 +88,18 @@ struct  _Info__Battery
 {
   ProtobufCMessage base;
   /*
-   * Power level [0, 100]
+   *Power level [0, 100]
    */
   uint32_t level;
+  /*
+   *Charge status
+   */
+  protobuf_c_boolean has_status;
+  uint32_t status;
 };
 #define INFO__BATTERY__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&info__battery__descriptor) \
-    , 0 }
+    , 0, 0, 0 }
 
 
 /* Info__Device methods */
@@ -147,6 +158,7 @@ extern const ProtobufCMessageDescriptor info__device__descriptor;
 extern const ProtobufCEnumDescriptor    info__device__type__descriptor;
 extern const ProtobufCEnumDescriptor    info__device__model__descriptor;
 extern const ProtobufCMessageDescriptor info__battery__descriptor;
+extern const ProtobufCEnumDescriptor    info__battery__status__descriptor;
 
 PROTOBUF_C__END_DECLS
 

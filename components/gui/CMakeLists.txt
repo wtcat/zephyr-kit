@@ -30,7 +30,8 @@ zephyr_library_sources_ifdef(CONFIG_GUIX_ZEPHYR_SPIN_BINDING
 
 zephyr_library_sources(
        guix_zephyr_init.c
-       
+       guix_input_zephyr.c
+
    # {{BEGIN_TARGET_SOURCES}}
 	gui/common/src/gx_utility_bidi_arabic_shaping.c
 	gui/common/src/gx_accordion_menu_create.c

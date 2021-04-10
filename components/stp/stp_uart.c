@@ -27,7 +27,7 @@ struct stp_uartpriv {
 
 
 #define CONFIG_STP_RX_PRIO 2
-#define CONFIG_STP_UART_RX_TIMEOUT     50 /* 50ms */
+#define CONFIG_STP_UART_RX_TIMEOUT     25 /* 25ms */
 #define CONFIG_STP_UART_RX_BUFSZ       280
 #define CONFIG_STP_UART_RX_BUFSZ_PRIV 4
 
@@ -94,8 +94,10 @@ static void uart_rx_process(const struct device *dev,
     }
 
     req_len = net_buf_tailroom(rx);
-    if (!req_len)
+    if (!req_len) {
+        LOG_ERR("%s(): Receive buffer is no enough\n", __func__);
         goto _drop_rx;
+    }
 
     len = (uint16_t)uart_fifo_read(dev, net_buf_tail(rx), req_len);
     net_buf_add(rx, len);
@@ -106,6 +108,7 @@ static void uart_rx_process(const struct device *dev,
             net_buf_put(&priv->rx_queue, rx);
             priv->curr_rx = NULL;
         } else if (rx->len > length) {
+            LOG_ERR("%s(): Rx-packet length is invalid\n", __func__);
             goto _drop_rx;
         }
     }
@@ -213,4 +216,3 @@ static int stp_uart_init(const struct device *dev)
 
 SYS_INIT(stp_uart_init, POST_KERNEL, 
     CONFIG_KERNEL_INIT_PRIORITY_DEVICE);
-

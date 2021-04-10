@@ -15,24 +15,53 @@ LOG_MODULE_DECLARE(stp_app, CONFIG_STP_APP_LOG_LEVEL);
 static void time_update_service(const void *buf, size_t size,
     struct net_buf *obuf)
 {
-    uint8_t resp[2] = {SET_TIME, };
+    uint8_t resp[sizeof(struct opc_subhdr) + 1];
+    struct opc_subhdr *hdr = (struct opc_subhdr *)resp;
     Setting__Time *time;
-       
+
+    hdr->minor = SETTING_UPDATE_TIME;
+    hdr->len = ltons(1);     
     time = setting__time__unpack(NULL, size, buf);
     if (time == NULL) {
         LOG_ERR("%s(): Unpack data failed\n", __func__);
-        resp[1] = 0x1;
+        hdr->data[0] = 0x1;
         goto _resp;
     }
 
     /* Notify */
-    setting_notify(SET_TIME, time);
+    setting_notify(SETTING_UPDATE_TIME, time);
 
     /* Free buffer */
     setting__time__free_unpacked(time, NULL);
-    resp[1] = 0x00;
+    hdr->data[0] = 0x00;
 _resp:
     net_buf_add_mem(obuf, resp, sizeof(resp));
 }
-STP_SERVICE(setting, OPC_CLASS_SETTING, SET_TIME, time_update_service);
+STP_SERVICE(setting, OPC_CLASS_SETTING, SETTING_UPDATE_TIME, time_update_service);
 
+static void alarm_set_service(const void *buf, size_t size,
+    struct net_buf *obuf)
+{
+    uint8_t resp[sizeof(struct opc_subhdr) + 1];
+    struct opc_subhdr *hdr = (struct opc_subhdr *)resp;
+    Setting__Alarm *alarm;
+
+    hdr->minor = SETTING_SET_ALARM;
+    hdr->len = ltons(1);        
+    alarm = setting__alarm__unpack(NULL, size, buf);
+    if (alarm == NULL) {
+        LOG_ERR("%s(): Unpack data failed\n", __func__);
+        hdr->data[0] = 0x1;
+        goto _resp;
+    }
+
+    /* Notify */
+    setting_notify(SETTING_SET_ALARM, alarm);
+
+    /* Free buffer */
+    setting__alarm__free_unpacked(alarm, NULL);
+    hdr->data[0] = 0x00;
+_resp:
+    net_buf_add_mem(obuf, resp, sizeof(resp));
+}
+STP_SERVICE(setting, OPC_CLASS_SETTING, SETTING_SET_ALARM, alarm_set_service);

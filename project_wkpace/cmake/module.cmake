@@ -76,4 +76,4 @@ list(APPEND ZEPHYR_EXTRA_MODULES
 endif()
 
 # add syscall generate for private drv 
-#list(APPEND SYSCALL_INCLUDE_DIRS ${BSP_ROOT}/include/drivers_ext)
+list(APPEND SYSCALL_INCLUDE_DIRS ${BSP_ROOT}/include/drivers_ext)

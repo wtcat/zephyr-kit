@@ -18,17 +18,15 @@ struct counter_alarm_wk_rpt_cfg {
 	uint32_t flags;
 };
 
-typedef int (*counter_api_set_value)(const struct device *dev,
-				     uint32_t ticks);
+typedef int (*counter_api_set_value)(const struct device *dev, uint32_t ticks);
 
-//rtc extend£¬ input £º weekday + hour + min example: MONDAY 08:00
-typedef int (*counter_api_set_alarm_wk_rpt)(const struct device *dev,
-				     uint8_t chan_id,
-				     const struct counter_alarm_wk_rpt_cfg *alarm_cfg);
+// rtc extend api
+typedef int (*counter_api_set_alarm_wk_rpt)(const struct device *dev, uint8_t chan_id,
+											const struct counter_alarm_wk_rpt_cfg *alarm_cfg);
 
 __subsystem struct rtc_driver_api {
 	struct counter_driver_api base;
-	//extend api
+	// extend api
 	counter_api_set_value set_value;
 	counter_api_set_alarm_wk_rpt set_alarm_by_week_rpt;
 };
@@ -43,33 +41,28 @@ __subsystem struct rtc_driver_api {
  */
 __syscall int counter_set_value(const struct device *dev, uint32_t ticks);
 
-static inline int z_impl_counter_set_value(const struct device *dev,
-					   uint32_t ticks)
+static inline int z_impl_counter_set_value(const struct device *dev, uint32_t ticks)
 {
-	const struct rtc_driver_api *api =
-				(struct rtc_driver_api *)dev->api;
+	const struct rtc_driver_api *api = (struct rtc_driver_api *)dev->api;
 
 	return api->set_value(dev, ticks);
 }
 
 /**
- * @brief Set alarm by weekday¡¢hour and min,example: MONDAY 08:00
+ * @brief Set alarm by weekday
  * @param dev Pointer to the device structure for the driver instance.
  * @param ticks Pointer to where to store the current counter value
  *
  * @retval 0 If successful.
  * @retval Negative error code on failure setting alarm
  */
-__syscall int counter_set_alarm_wk_rpt(const struct device *dev,
-					uint8_t chan_id,
-					const struct counter_alarm_wk_rpt_cfg *alarm_cfg);
+__syscall int counter_set_alarm_wk_rpt(const struct device *dev, uint8_t chan_id,
+									   const struct counter_alarm_wk_rpt_cfg *alarm_cfg);
 
-static inline int z_impl_counter_set_alarm_wk_rpt(const struct device *dev,
-						   uint8_t chan_id,
-						   const struct counter_alarm_wk_rpt_cfg *alarm_cfg)
+static inline int z_impl_counter_set_alarm_wk_rpt(const struct device *dev, uint8_t chan_id,
+												  const struct counter_alarm_wk_rpt_cfg *alarm_cfg)
 {
-	const struct rtc_driver_api *api =
-				(struct rtc_driver_api *)dev->api;
+	const struct rtc_driver_api *api = (struct rtc_driver_api *)dev->api;
 
 	if (chan_id >= counter_get_num_of_channels(dev)) {
 		return -ENOTSUP;

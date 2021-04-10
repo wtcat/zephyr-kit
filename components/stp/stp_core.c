@@ -85,7 +85,7 @@ static struct stp_rtn *add_rtn(struct stp_dev *dev,
     return rtn;
 }
 
-static int stp_send(struct stp_dev *dev, struct net_buf *buf)
+static inline int stp_send(struct stp_dev *dev, struct net_buf *buf)
 {
     int ret;
     ret = dev->drv->output(dev->drv, buf);
@@ -133,7 +133,6 @@ static k_timeout_t run_rto_timer(struct stp_dev *dev, int elapsed)
 static bool list_match(struct stp_dev *dev, struct stp_header *hdr)
 {
     struct stp_rtn *curr;
-
     SYS_DLIST_FOR_EACH_CONTAINER(&dev->match_list, curr, node) {
         struct stp_header *list_hdr = (struct stp_header *)curr->p->data;
         if (list_hdr->seqno == hdr->seqno &&
@@ -195,7 +194,6 @@ static int process_events(struct stp_dev *dev,
     struct k_poll_event *ev, int n)
 {
     int ret = 0;
-    
     for ( ; n > 0; ev++, n--) {
         if (ev->state == K_POLL_STATE_FIFO_DATA_AVAILABLE) {
             struct net_buf *buf = net_buf_get(ev->fifo, K_NO_WAIT);

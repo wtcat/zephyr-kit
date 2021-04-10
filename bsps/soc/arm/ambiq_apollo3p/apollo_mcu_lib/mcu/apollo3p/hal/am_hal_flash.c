@@ -1812,62 +1812,74 @@ am_hal_flash_load_ui32(uint32_t *pui32Address)
 //! @return The value read from the given address.
 //
 //*****************************************************************************
-#if defined(__GNUC_STDC_INLINE__)
-uint32_t SRAM_write_ui32[12 / 4] =
-    {
-        //
-        // A very simple, word-aligned function residing in SRAM (stack).  This
-        // function writes a given memory location while executing outside of
-        // flash. It then does a read back to ensure that the write completed.
-        // Prototype:   uint32_t SRAM_write_ui32(ui32Addr, ui32Value);
-        //
-        0xBF006001,         // 6001   str    r1,[r0,#0]
-                            // BF00   nop
-        0xBF006800,         // 6800   ldr    r0,[r0,#0]
-                            // BF00   nop
-        0xBF004770          // 4770   bx lr
-                            // BF00   nop
-    };
-#elif (defined (__ARMCC_VERSION) || defined(__IAR_SYSTEMS_ICC__))
-#else
-#error Compiler is unknown, please contact Ambiq support team
-#endif
+#include <toolchain.h>
 
-void
-am_hal_flash_store_ui32(uint32_t *pui32Address, uint32_t ui32Value)
+void __ramfunc am_hal_flash_store_ui32(uint32_t *addr, uint32_t val)
 {
-#if (defined (__ARMCC_VERSION) || defined(__IAR_SYSTEMS_ICC__))
-    uint32_t SRAM_write_ui32[12 / 4] =
-    {
-        //
-        // A very simple, word-aligned function residing in SRAM (stack).  This
-        // function writes a given memory location while executing outside of
-        // flash. It then does a read back to ensure that the write completed.
-        // Prototype:   uint32_t SRAM_write_ui32(ui32Addr, ui32Value);
-        //
-        0xBF006001,         // 6001   str    r1,[r0,#0]
-                            // BF00   nop
-        0xBF006800,         // 6800   ldr    r0,[r0,#0]
-                            // BF00   nop
-        0xBF004770          // 4770   bx lr
-                            // BF00   nop
-    };
-#elif defined(__GNUC_STDC_INLINE__)
-#else
-#error Compiler is unknown, please contact Ambiq support team
-#endif
+    __asm__ volatile(
+        "str r1,[r0, #0]\n"
+        "nop\n"
+        "ldr r0,[r0, #0]\n"
+        "nop\n"
+        : : :);
+}
 
-    //
-    // Call the simple routine that has been coded in SRAM.
-    // First set up a function pointer to the array, being sure to set the
-    //  .T bit (Thumb bit, bit0) in the branch address, then use that
-    //  function ptr to call the SRAM function.
-    //
-    uint32_t SRAMCode = (uint32_t)SRAM_write_ui32 | 0x1;
-    uint32_t (*pFunc)(uint32_t*, uint32_t) = (uint32_t (*)(uint32_t*, uint32_t))SRAMCode;
-    (*pFunc)(pui32Address, ui32Value);
+// #if defined(__GNUC_STDC_INLINE__)
+// uint32_t SRAM_write_ui32[12 / 4] =
+//     {
+//         //
+//         // A very simple, word-aligned function residing in SRAM (stack).  This
+//         // function writes a given memory location while executing outside of
+//         // flash. It then does a read back to ensure that the write completed.
+//         // Prototype:   uint32_t SRAM_write_ui32(ui32Addr, ui32Value);
+//         //
+//         0xBF006001,         // 6001   str    r1,[r0,#0]
+//                             // BF00   nop
+//         0xBF006800,         // 6800   ldr    r0,[r0,#0]
+//                             // BF00   nop
+//         0xBF004770          // 4770   bx lr
+//                             // BF00   nop
+//     };
+// #elif (defined (__ARMCC_VERSION) || defined(__IAR_SYSTEMS_ICC__))
+// #else
+// #error Compiler is unknown, please contact Ambiq support team
+// #endif
 
-} // am_hal_flash_store_ui32()
+// void
+// am_hal_flash_store_ui32(uint32_t *pui32Address, uint32_t ui32Value)
+// {
+// #if (defined (__ARMCC_VERSION) || defined(__IAR_SYSTEMS_ICC__))
+//     uint32_t SRAM_write_ui32[12 / 4] =
+//     {
+//         //
+//         // A very simple, word-aligned function residing in SRAM (stack).  This
+//         // function writes a given memory location while executing outside of
+//         // flash. It then does a read back to ensure that the write completed.
+//         // Prototype:   uint32_t SRAM_write_ui32(ui32Addr, ui32Value);
+//         //
+//         0xBF006001,         // 6001   str    r1,[r0,#0]
+//                             // BF00   nop
+//         0xBF006800,         // 6800   ldr    r0,[r0,#0]
+//                             // BF00   nop
+//         0xBF004770          // 4770   bx lr
+//                             // BF00   nop
+//     };
+// #elif defined(__GNUC_STDC_INLINE__)
+// #else
+// #error Compiler is unknown, please contact Ambiq support team
+// #endif
+
+//     //
+//     // Call the simple routine that has been coded in SRAM.
+//     // First set up a function pointer to the array, being sure to set the
+//     //  .T bit (Thumb bit, bit0) in the branch address, then use that
+//     //  function ptr to call the SRAM function.
+//     //
+//     uint32_t SRAMCode = (uint32_t)SRAM_write_ui32 | 0x1;
+//     uint32_t (*pFunc)(uint32_t*, uint32_t) = (uint32_t (*)(uint32_t*, uint32_t))SRAMCode;
+//     (*pFunc)(pui32Address, ui32Value);
+
+// } // am_hal_flash_store_ui32()
 
 //*****************************************************************************
 //

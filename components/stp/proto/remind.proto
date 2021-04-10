@@ -1,27 +1,30 @@
 syntax = "proto2";
 package remind;
 
+import "time.proto";
+
 //SPEED/CODE_SIZE/LITE_RUNTIME
 option optimize_for=SPEED;
 
-message Call {
-    required fixed32 timestamp = 1; //Time Stamp
-    required string phone = 2; //Phone number
-    optional string people = 3; //Contact name
-}
-
 message Message {
-    required fixed32 timestamp = 1; //Time Stamp
+    required proto.time.UnixTimestamp timestamp = 1; //Time stamp
     enum Type {
         TEXT      = 0; /* Text message */
         FACEBOOK  = 1; /* Facebook message */
         WECHAT    = 2;
         QQ        = 3;
+        WHATSAPP  = 4;
+        MESSENGER = 5;
+        TWITTER   = 6;
+        LINKEDIN  = 7;
+        INSTAGRAM = 8;
     }
     required Type type = 2 [default = TEXT];
-    required string phone = 3; //Phone number
-    required string text = 4;  //Message text
-    optional string people = 5; //Contact name
+    required uint32 maxno = 3; //Maximum package number
+    required uint32 curno = 4; //Current package number
+    required string chat = 6; //Text message
+    optional string user = 7; //User name
+    optional string phone = 8; //Phone numbers
 }
 
 message Battery {

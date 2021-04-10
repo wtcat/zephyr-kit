@@ -1,6 +1,8 @@
-zephyr_library_named(protobuf)
+if (CONFIG_PROTOBUF)
+  zephyr_library_named(protobuf)
 
-zephyr_library_sources_ifdef(CONFIG_PROTOBUF
-  protobuf-c.c
-)
+  zephyr_library_sources(
+    protobuf-c.c
+  )
+endif()
 

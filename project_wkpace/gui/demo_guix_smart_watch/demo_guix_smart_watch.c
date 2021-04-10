@@ -3,7 +3,7 @@
 #include <zephyr.h>
 #include "demo_guix_smart_watch.h"
 
-#include "base/clock_tod.h"
+//#include "base/clock_tod.h"
 
 
 #define ID_HOME 0xFFFF

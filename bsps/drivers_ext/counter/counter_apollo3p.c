@@ -13,9 +13,9 @@
 #include <errno.h>
 #include <time.h>
 
-#include <sys/util.h>
 #include <kernel.h>
 #include <soc.h>
+#include <sys/util.h>
 
 #include <sys/timeutil.h>
 
@@ -25,12 +25,22 @@
 
 #include <syscall_handler.h>
 
-
 LOG_MODULE_REGISTER(counter_rtc_apollo3p, CONFIG_COUNTER_APOLLO_LOG_LEVEL);
 
 /* Seconds from 1970-01-01T00:00:00 to 2000-01-01T00:00:00 */
 #define T_TIME_OFFSET 946684800
 
+#if defined(CONFIG_MULTITHREADING)
+/* semaphore for locking flash resources (tickers) */
+static unsigned int key;
+#define IRQ_INIT()
+#define IRQ_LOCK() key = irq_lock();
+#define IRQ_UNLOCK() irq_unlock(key);
+#else
+#define IRQ_INIT()
+#define IRQ_LOCK()
+#define IRQ_UNLOCK()
+#endif
 
 struct rtc_apollo3p_data {
 	counter_alarm_callback_t callback;
@@ -39,8 +49,7 @@ struct rtc_apollo3p_data {
 };
 
 #define DEV_DATA(dev) ((struct rtc_apollo3p_data *)(dev)->data)
-#define DEV_CFG(dev)	\
-((const struct rtc_stm32_config * const)(dev)->config)
+#define DEV_CFG(dev) ((const struct rtc_stm32_config *const)(dev)->config)
 
 static void rtc_apoolo3p_irq_config(const struct device *dev);
 
@@ -48,32 +57,30 @@ static int rtc_apollo3p_start(const struct device *dev)
 {
 	ARG_UNUSED(dev);
 
-	#if 0
+#if 0
 	am_hal_rtc_osc_enable();
 
 	return 0;
-	#else
+#else
 	return -ENOTSUP;
-	#endif
+#endif
 }
-
 
 static int rtc_apollo3p_stop(const struct device *dev)
 {
 	ARG_UNUSED(dev);
 
-	#if 0
+#if 0
 	am_hal_rtc_osc_disable();
 	return 0;
-	#else
+#else
 	return -ENOTSUP;
-	#endif
+#endif
 }
-
 
 static uint32_t rtc_apollo3p_read(const struct device *dev)
 {
-	struct tm now = { 0 };
+	struct tm now = {0};
 	time_t ts;
 	uint32_t ticks;
 
@@ -83,11 +90,11 @@ static uint32_t rtc_apollo3p_read(const struct device *dev)
 	am_hal_rtc_time_get(&hal_time);
 
 	now.tm_year = 100 + hal_time.ui32Year;
-	now.tm_mon  = hal_time.ui32Month - 1;  //rtc month: 1~12  posix month: 0~11
+	now.tm_mon = hal_time.ui32Month - 1; // rtc month: 1~12  posix month: 0~11
 	now.tm_mday = hal_time.ui32DayOfMonth;
 	now.tm_hour = hal_time.ui32Hour;
-	now.tm_min  = hal_time.ui32Minute;
-	now.tm_sec  = hal_time.ui32Second;
+	now.tm_min = hal_time.ui32Minute;
+	now.tm_sec = hal_time.ui32Second;
 
 	ts = timeutil_timegm(&now);
 
@@ -105,26 +112,30 @@ static int rtc_apollo3p_get_value(const struct device *dev, uint32_t *ticks)
 	return 0;
 }
 
-//TODO: need implement
+// TODO: need implement
 static int rtc_apollo3p_set_value(const struct device *dev, uint32_t ticks)
 {
 	ARG_UNUSED(dev);
 
+	IRQ_LOCK();
+
 	uint64_t us_cnt = counter_ticks_to_us(dev, ticks);
 
-	time_t now = us_cnt/1000000UL;
+	time_t now = us_cnt / 1000000UL;
 
-	struct tm * tm_now = gmtime(&now);
+	struct tm *tm_now = gmtime(&now);
 
 	am_hal_rtc_time_t hal_time;
 
-	if (tm_now->tm_year > 100){
+	if (tm_now->tm_year > 100) {
 		hal_time.ui32Year = tm_now->tm_year - 100;
 	} else {
+		IRQ_UNLOCK();
 		return -ENOTSUP;
 	}
 
-	hal_time.ui32Month = tm_now->tm_mon + 1; //rtc month: 1~12  posix month: 0~11
+	hal_time.ui32Month =
+		tm_now->tm_mon + 1; // rtc month: 1~12  posix month: 0~11
 	hal_time.ui32DayOfMonth = tm_now->tm_mday;
 	hal_time.ui32Hour = tm_now->tm_hour;
 	hal_time.ui32Minute = tm_now->tm_min;
@@ -134,15 +145,16 @@ static int rtc_apollo3p_set_value(const struct device *dev, uint32_t ticks)
 
 	am_hal_rtc_time_set(&hal_time);
 
+	IRQ_UNLOCK();
+
 	return 0;
 }
 
 static int rtc_apollo3p_set_alarm(const struct device *dev, uint8_t chan_id,
-				const struct counter_alarm_cfg *alarm_cfg)
+								  const struct counter_alarm_cfg *alarm_cfg)
 {
-	struct tm alarm_tm;
 	time_t alarm_val;
-	
+
 	am_hal_rtc_time_t rtc_alarm;
 
 	struct rtc_apollo3p_data *data = DEV_DATA(dev);
@@ -165,24 +177,25 @@ static int rtc_apollo3p_set_alarm(const struct device *dev, uint8_t chan_id,
 		 * that tick+1 event occurs before alarm setting is finished.
 		 */
 		ticks += now + 1;
-	} 
+	}
 
 	LOG_DBG("Set Alarm: %d\n", ticks);
 
 	alarm_val = (time_t)(counter_ticks_to_us(dev, ticks) / USEC_PER_SEC);
 
-	gmtime_r(&alarm_val, &alarm_tm);
+	struct tm *alarm_tm = gmtime(&alarm_val);
 
-	rtc_alarm.ui32Hour = alarm_tm.tm_hour;
-	rtc_alarm.ui32Minute = alarm_tm.tm_min;
-	rtc_alarm.ui32Second = alarm_tm.tm_sec;
+	rtc_alarm.ui32Month = alarm_tm->tm_mon + 1;
+	rtc_alarm.ui32DayOfMonth = alarm_tm->tm_mday;
+	rtc_alarm.ui32Hour = alarm_tm->tm_hour;
+	rtc_alarm.ui32Minute = alarm_tm->tm_min;
+	rtc_alarm.ui32Second = alarm_tm->tm_sec;
 	rtc_alarm.ui32Hundredths = 0;
 
-	am_hal_rtc_alarm_set(&rtc_alarm, AM_HAL_RTC_ALM_RPT_DAY);
+	am_hal_rtc_alarm_set(&rtc_alarm, AM_HAL_RTC_ALM_RPT_YR);
 
 	return 0;
 }
-
 
 static int rtc_apollo3p_cancel_alarm(const struct device *dev, uint8_t chan_id)
 {
@@ -192,18 +205,16 @@ static int rtc_apollo3p_cancel_alarm(const struct device *dev, uint8_t chan_id)
 	if (ui32Status & AM_HAL_RTC_INT_ALM) {
 		am_hal_rtc_int_clear(AM_HAL_RTC_INT_ALM);
 	}
-	
+
 	DEV_DATA(dev)->callback = NULL;
 
 	return 0;
 }
 
-
 static uint32_t rtc_apollo3p_get_pending_int(const struct device *dev)
 {
 	return am_hal_rtc_int_status_get(true) != 0;
 }
-
 
 static uint32_t rtc_apollo3p_get_top_value(const struct device *dev)
 {
@@ -212,9 +223,8 @@ static uint32_t rtc_apollo3p_get_top_value(const struct device *dev)
 	return info->max_top_value;
 }
 
-
 static int rtc_apollo3p_set_top_value(const struct device *dev,
-				   const struct counter_top_cfg *cfg)
+									  const struct counter_top_cfg *cfg)
 {
 	const struct counter_config_info *info = dev->config;
 
@@ -233,7 +243,6 @@ static uint32_t rtc_apollo3p_get_max_relative_alarm(const struct device *dev)
 	return info->max_top_value;
 }
 
-
 void rtc_apollo3p_isr(const void *device)
 {
 	struct device *dev = (struct device *)device;
@@ -245,8 +254,7 @@ void rtc_apollo3p_isr(const void *device)
 	uint32_t now = rtc_apollo3p_read(dev);
 
 	uint32_t ui32Status = am_hal_rtc_int_status_get(false);
-	if (ui32Status & AM_HAL_RTC_INT_ALM)
-	{
+	if (ui32Status & AM_HAL_RTC_INT_ALM) {
 		am_hal_rtc_int_clear(AM_HAL_RTC_INT_ALM);
 
 		if (alarm_callback != NULL) {
@@ -256,12 +264,13 @@ void rtc_apollo3p_isr(const void *device)
 	}
 }
 
-
-static int rtc_apollo3p_set_alarm_wk_rpt(const struct device *dev,
-					uint8_t chan_id,
-					const struct counter_alarm_wk_rpt_cfg *alarm_cfg)
+static int rtc_apollo3p_set_alarm_wk_rpt(
+	const struct device *dev, uint8_t chan_id,
+	const struct counter_alarm_wk_rpt_cfg *alarm_cfg)
 {
-	am_hal_rtc_time_t rtc_alarm = {0,};
+	am_hal_rtc_time_t rtc_alarm = {
+		0,
+	};
 	struct rtc_apollo3p_data *data = DEV_DATA(dev);
 
 	if (data->callback != NULL) {
@@ -272,8 +281,8 @@ static int rtc_apollo3p_set_alarm_wk_rpt(const struct device *dev,
 	data->callback = alarm_cfg->callback;
 	data->user_data = alarm_cfg->user_data;
 
-	LOG_DBG("Set Alarm: weekday: %d hour: %d min: %d\n", 
-				alarm_cfg->weekday, alarm_cfg->hour, alarm_cfg->min);
+	LOG_DBG("Set Alarm: weekday: %d hour: %d min: %d\n", alarm_cfg->weekday,
+			alarm_cfg->hour, alarm_cfg->min);
 
 	rtc_alarm.ui32Weekday = alarm_cfg->weekday;
 	rtc_alarm.ui32Hour = alarm_cfg->hour;
@@ -290,9 +299,10 @@ static int rtc_apollo3p_set_alarm_wk_rpt(const struct device *dev,
 	return 0;
 }
 
-
 static int rtc_apollo3p_init(const struct device *dev)
 {
+	IRQ_INIT();
+
 	am_hal_clkgen_control(AM_HAL_CLKGEN_CONTROL_XTAL_START, 0);
 
 	am_hal_rtc_osc_select(AM_HAL_RTC_OSC_XT);
@@ -314,7 +324,6 @@ static int rtc_apollo3p_init(const struct device *dev)
 
 static struct rtc_apollo3p_data rtc_data;
 
-
 static struct counter_config_info counter_config = {
 	.max_top_value = UINT32_MAX,
 	.freq = 1,
@@ -323,27 +332,27 @@ static struct counter_config_info counter_config = {
 };
 
 static const struct rtc_driver_api rtc_apollo3p_driver_api = {
-	.base  ={
-		.start = rtc_apollo3p_start,
-		.stop  = rtc_apollo3p_stop,
-		.get_value = rtc_apollo3p_get_value,
-		.set_alarm = rtc_apollo3p_set_alarm,
-		.cancel_alarm = rtc_apollo3p_cancel_alarm,
-		.set_top_value = rtc_apollo3p_set_top_value,
-		.get_pending_int = rtc_apollo3p_get_pending_int,
-		.get_top_value = rtc_apollo3p_get_top_value,
-		.get_max_relative_alarm = rtc_apollo3p_get_max_relative_alarm,
-	},
-	//extend api
+	.base =
+		{
+			.start = rtc_apollo3p_start,
+			.stop = rtc_apollo3p_stop,
+			.get_value = rtc_apollo3p_get_value,
+			.set_alarm = rtc_apollo3p_set_alarm,
+			.cancel_alarm = rtc_apollo3p_cancel_alarm,
+			.set_top_value = rtc_apollo3p_set_top_value,
+			.get_pending_int = rtc_apollo3p_get_pending_int,
+			.get_top_value = rtc_apollo3p_get_top_value,
+			.get_max_relative_alarm = rtc_apollo3p_get_max_relative_alarm,
+		},
+	// extend api
 	.set_value = rtc_apollo3p_set_value,
 	.set_alarm_by_week_rpt = rtc_apollo3p_set_alarm_wk_rpt,
 };
 
-
 DEVICE_DEFINE(apollo3p_rtc, "apollo3p_rtc", &rtc_apollo3p_init,
-	      device_pm_control_nop, &rtc_data, &counter_config, PRE_KERNEL_1,
-	      CONFIG_KERNEL_INIT_PRIORITY_DEVICE, &rtc_apollo3p_driver_api.base);
-
+			  device_pm_control_nop, &rtc_data, &counter_config, PRE_KERNEL_1,
+			  CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
+			  &rtc_apollo3p_driver_api.base);
 
 static void rtc_apoolo3p_irq_config(const struct device *dev)
 {

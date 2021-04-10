@@ -1,5 +1,5 @@
 menuconfig COUNTER_RTC_APOLLO3P
-	default y 
+	default y
 	bool "APOLLO3P Counter RTC driver"
 	help
 	  Build RTC driver for apollo3p SoCs.

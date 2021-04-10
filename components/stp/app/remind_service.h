@@ -14,7 +14,7 @@ extern "C"{
  * Remind minor number
  */
 #define MESSAGE_REMIND 0x01
-#define CALLING_REMIND 0x02
+
 
 
 /*

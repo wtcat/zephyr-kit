@@ -322,9 +322,9 @@ static const struct spi_driver_api spi_apollo3p_driver_api = {
 		SPI_CONTEXT_INIT_LOCK(spi_apollo3p_dev_data_##n, ctx),	\
 		SPI_CONTEXT_INIT_SYNC(spi_apollo3p_dev_data_##n, ctx),	\
 	};								\
-	DEVICE_AND_API_INIT(spi_apollo3p_##n,				\
+	DEVICE_DEFINE(spi_apollo3p_##n,				\
 			    DT_INST_LABEL(n),				\
-			    &spi_apollo3p_init, &spi_apollo3p_dev_data_##n,	\
+			    &spi_apollo3p_init, NULL, &spi_apollo3p_dev_data_##n,	\
 			    &spi_apollo3p_config_##n, POST_KERNEL,		\
 			    CONFIG_SPI_INIT_PRIORITY, &spi_apollo3p_driver_api);
 

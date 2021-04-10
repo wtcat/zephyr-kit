@@ -313,6 +313,38 @@ static const struct i2c_driver_api i2c_apollo3p_compatible_driver_api = {
 };
 
 
+/*
+#define DEVICE_PM_ACTIVE_STATE          1
+#define DEVICE_PM_LOW_POWER_STATE       2
+#define DEVICE_PM_SUSPEND_STATE         3
+#define DEVICE_PM_FORCE_SUSPEND_STATE	4
+#define DEVICE_PM_OFF_STATE             5
+*/
+
+#ifdef CONFIG_PM_DEVICE
+static int i2c_pm_control(const struct device *dev, uint32_t command,
+                void *context, device_pm_cb cb, void *arg)
+{
+    uint32_t state = *(uint32_t *)context;
+    if (command == DEVICE_PM_SET_POWER_STATE) {
+        switch (state) {
+        case DEVICE_PM_ACTIVE_STATE:
+            break;
+        case DEVICE_PM_LOW_POWER_STATE:
+        case DEVICE_PM_SUSPEND_STATE:
+        case DEVICE_PM_FORCE_SUSPEND_STATE:
+            break;
+        }
+    } else {
+
+    }
+    return -ENOTSUP;
+}
+
+#else
+#define i2c_pm_control device_pm_control_nop
+#endif /* CONFIG_PM_DEVICE */
+
 #define I2C_APOLLO3P(name, _driver_api) \
 	struct i2c_apollo3p_data i2c##name##_apollo3p_data = { \
 	    .devno = name, \
@@ -322,9 +354,10 @@ static const struct i2c_driver_api i2c_apollo3p_compatible_driver_api = {
 	    .irq = DT_IRQ(DT_NODELABEL(i2c##name), irq), \
 	    .priority = DT_IRQ(DT_NODELABEL(i2c##name), priority), \
 	}; \
-	DEVICE_AND_API_INIT(i2c##name##_apollo3p, \
+	DEVICE_DEFINE(i2c##name##_apollo3p, \
 		            DT_LABEL(DT_NODELABEL(i2c##name)), \
 			    i2c_apollo3p_init, \
+                i2c_pm_control, \
 			    &i2c##name##_apollo3p_data, \
 			    &i2c##name##_apollo3p_cfg, \
 			    POST_KERNEL, \
@@ -333,12 +366,12 @@ static const struct i2c_driver_api i2c_apollo3p_compatible_driver_api = {
 
 /* I2C0 */
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(i2c0), ambiq_apollo3p_i2c, okay)
-I2C_APOLLO3P(0, i2c_apollo3p_compatible_driver_api);
+I2C_APOLLO3P(0, i2c_apollo3p_driver_api);
 #endif
 
 /* I2C1 */
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(i2c1), ambiq_apollo3p_i2c, okay)
-I2C_APOLLO3P(1, i2c_apollo3p_compatible_driver_api);
+I2C_APOLLO3P(1, i2c_apollo3p_driver_api);
 #endif
 
 /* I2C2 */
@@ -348,12 +381,12 @@ I2C_APOLLO3P(2, i2c_apollo3p_driver_api);
 
 /* I2C3 */
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(i2c3), ambiq_apollo3p_i2c, okay)
-I2C_APOLLO3P(3, i2c_apollo3p_compatible_driver_api);
+I2C_APOLLO3P(3, i2c_apollo3p_driver_api);
 #endif
 
 /* I2C4 */
 #if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(i2c4), ambiq_apollo3p_i2c, okay)
-I2C_APOLLO3P(4, i2c_apollo3p_compatible_driver_api);
+I2C_APOLLO3P(4, i2c_apollo3p_driver_api);
 #endif
 
 /* I2C5 */

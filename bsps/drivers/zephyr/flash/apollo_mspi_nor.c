@@ -4,6 +4,7 @@
 
 #include <errno.h>
 #include <drivers/flash.h>
+#include <drivers/gpio.h>
 #include <init.h>
 #include <kernel.h>
 #include <soc.h>
@@ -13,12 +14,17 @@
 #include "misc/mspi_apollo3p.h"
 
 LOG_MODULE_REGISTER(mspi_nor, CONFIG_FLASH_LOG_LEVEL);
-
 #define DT_DRV_COMPAT gd_mspi_nor
 
-
-#define  MX25X512G_JEDEC_RDID 		       0xC23A25
-#define  MX25X512G_JEDEC_RDID_QPI 		   0x3A25C2
+#if defined(CONFIG_MX25U256)
+#define MX25_JEDEC_RDID     0xC23925
+#define MX25_JEDEC_RDID_QPI 0x3925C2
+#elif defined(CONFIG_MX25U512)
+#define MX25_JEDEC_RDID     0xC23A25
+#define MX25_JEDEC_RDID_QPI 0x3A25C2
+#else
+#error "Wrong flash chid select!"
+#endif
 
 /* Write Operations */
 #define WRITE_ENABLE_CMD                     0x06
@@ -93,10 +99,16 @@ LOG_MODULE_REGISTER(mspi_nor, CONFIG_FLASH_LOG_LEVEL);
 
 #define FLASH_WBLK_SIZE (256)
 #define FLASH_PAGE_SIZE (4 * 1024ul)
-#define FLASH_SIZE       (64 * 1024 * 1024ul)
+
+#if defined(CONFIG_MX25U256)
+#define FLASH_SIZE (32 * 1024 * 1024ul)
+#elif defined(CONFIG_MX25U512)
+#define FLASH_SIZE (64 * 1024 * 1024ul)
+#else
+#error not support!
+#endif
 #define FLASH_DATA_AREA_SIZE (10 * 1024 * 1024)
 #define FLASH_FILE_AREA_SIZE (FLASH_SIZE - FLASH_DATA_AREA_SIZE)
-
 
 enum mspi_transfer_dir {
     MSPI_RX = AM_HAL_MSPI_RX,
@@ -106,6 +118,7 @@ enum mspi_transfer_dir {
 struct mspi_nor_priv {
     struct k_mutex mutex;
     struct mspi_device *mspi;
+    const struct device *en;
 };
 
 struct mspi_nor_config {
@@ -329,10 +342,12 @@ static  const struct flash_parameters *mspi_flash_get_parameters(
 }
 
 #if defined(CONFIG_FLASH_PAGE_LAYOUT)
+static struct flash_pages_layout dev_layout;
 static void mspi_nor_pages_layout(const struct device *dev,
 	const struct flash_pages_layout **layout, size_t *layout_size)
 {
-
+    *layout_size = 1;
+    *layout = &dev_layout;
 }
 #endif
 
@@ -444,7 +459,7 @@ static int mspi_nor_init(const struct device *dev)
     static bool ready = false;
     uint8_t buf[4];
     uint32_t id;
-    int ret = 0;
+    int pin, ret = 0;
 
     k_mutex_init(&data->mutex);
     k_mutex_lock(&data->mutex, K_FOREVER);
@@ -458,13 +473,34 @@ static int mspi_nor_init(const struct device *dev)
     if (ready)
         goto out;
 
+    pin = soc_get_pin("flash_en");
+    if (pin < 0) {
+        LOG_ERR("flash_en pin is not found\n");
+        return -EINVAL;
+    }
+    data->en = device_get_binding(pin2name(pin));
+    if (!data->en) {
+        LOG_ERR("Device not found: %s\n", pin2name(pin));
+        return -EINVAL;
+    }
+
+    ret = gpio_pin_configure(data->en, pin2gpio(pin), GPIO_OUTPUT_LOW);
+    if (ret < 0) {
+        LOG_ERR("GPIO(%d) configure failed\n", pin);
+        return ret;
+    }
+    
+    /* Enable flash power and wait it get stable */
+    gpio_pin_set(data->en, pin2gpio(pin), 1);
+    k_busy_wait(2000);
+
     /* Configure 1-wire mode */
     ret = mspi_apollo3p_configure(data->mspi, &serial_mspi_ce0_cfg);
     if (ret)
         goto out;
 
     id = mspi_nor_read_id(data, READ_SPI_ID_CMD);
-    if (id == MX25X512G_JEDEC_RDID) {
+    if (id == MX25_JEDEC_RDID) {
         /* Switch to 4-wire mode */
         mspi_send_cmd(data, WRITE_ENABLE_CMD, NULL, 0, MSPI_TX);
         buf[0] = STATUS_QE;
@@ -484,7 +520,7 @@ static int mspi_nor_init(const struct device *dev)
 
     mspi_send_cmd(data, READ_STATUS_REG_2_CMD, buf, 1, MSPI_RX);
     id = mspi_nor_read_id(data, READ_QPI_ID_CMD);
-    if (id != MX25X512G_JEDEC_RDID_QPI ) {
+    if (id != MX25_JEDEC_RDID_QPI ) {
         ret = -ENOTSUP;
         goto out;
     }
@@ -495,6 +531,10 @@ static int mspi_nor_init(const struct device *dev)
     ret |= mspi_send_cmd(data, READ_STATUS_REG_2_CMD, buf, 1, MSPI_RX);
     if (!ret)
         ready = true;
+#if defined(CONFIG_FLASH_PAGE_LAYOUT)
+	dev_layout.pages_count = FLASH_SIZE/FLASH_PAGE_SIZE;
+	dev_layout.pages_size = FLASH_PAGE_SIZE;
+#endif
 out:
     k_mutex_unlock(&data->mutex);
 #ifdef CONFIG_GUIX
@@ -503,52 +543,6 @@ out:
     return ret;
 }
 
-#if 0
-/*
- * Partition 0 (For boot and GUI resources)
- *  
- * address range: 0x0 - 0x9FFFFF, 10 MBytes
- */
-static struct mspi_nor_priv nor_data0;
-static const struct mspi_nor_config nor_config0 = {
-	.devno = 1,
-	.page_size = FLASH_PAGE_SIZE,
-	.wpage_size = FLASH_WBLK_SIZE,
-	.start = 0,
-	.size = FLASH_DATA_AREA_SIZE
-};
-DEVICE_AND_API_INIT(mspi_nor0,
-                    "SPI_FLASH_RW",
-                    &mspi_nor_init, 
-                    &nor_data0,
-                    &nor_config0, 
-                    POST_KERNEL,
-                    CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
-                    &qspi_nor_api);
-
-/*
- * Partition 1 (For filesystem)
- *	
- * address range: 0xA00000 - 0x3FFFFFF, 64-10 MBytes
- */
-
-static struct mspi_nor_priv nor_data1;
-static const struct mspi_nor_config nor_config1 = {
-    .devno = 1,
-    .page_size = FLASH_PAGE_SIZE,
-    .wpage_size = FLASH_WBLK_SIZE,
-    .start = FLASH_DATA_AREA_SIZE,
-    .size = FLASH_FILE_AREA_SIZE
-};
-DEVICE_AND_API_INIT(mspi_nor1,
-                    "SPI_FLASH_FS",
-                    &mspi_nor_init, 
-                    &nor_data1,
-                    &nor_config1, 
-                    POST_KERNEL,
-                    CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
-                    &qspi_nor_api);
-#else
 static const struct mspi_nor_config nor_config = {
     .devno = 1,
     .page_size = FLASH_PAGE_SIZE,
@@ -560,4 +554,4 @@ DEVICE_DT_DEFINE(DT_DRV_INST(0), mspi_nor_init, &device_pm_control_nop,
 		 &nor_data, &nor_config,
 		 POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
 		 &qspi_nor_api);
-#endif
+

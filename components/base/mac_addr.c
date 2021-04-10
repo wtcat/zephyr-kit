@@ -1,7 +1,9 @@
 #include <bluetooth/bluetooth.h>
 #include <errno.h>
 
-int get_mac_address(uint8_t *addr)
+#include "base/mac_addr.h"
+
+ssize_t get_mac_address(uint8_t *addr)
 {
     bt_addr_le_t le_addr;
     size_t count;
@@ -14,7 +16,6 @@ int get_mac_address(uint8_t *addr)
         memcpy(addr, le_addr.a.val, sizeof(bt_addr_le_t));
         return sizeof(bt_addr_le_t);
     }
-    
     return -EINVAL;
 }
 

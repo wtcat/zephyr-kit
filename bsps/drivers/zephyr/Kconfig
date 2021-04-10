@@ -18,5 +18,9 @@ rsource "flash/Kconfig"
 rsource "bluetooth/Kconfig"
 rsource "timer/Kconfig"
 rsource "display/Kconfig"
+rsource "pwm/Kconfig"
+rsource "led/Kconfig"
+rsource "kscan/Kconfig"
+rsource "sensor/Kconfig"
 
 endif #APOLLO3P_DEVICE

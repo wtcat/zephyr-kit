@@ -4,6 +4,7 @@
 #include <sys/__assert.h>
 #include <soc.h>
 #include <init.h>
+#include <device.h>
 #include <drivers/uart.h>
 
 #include <linker/sections.h>
@@ -448,9 +449,10 @@ static const struct apollo_uart_config apollo3p_uart0_config = {
     .pwren = BIT(7),
 };
 
-DEVICE_AND_API_INIT(apollo3p_uart0, 
+DEVICE_DEFINE(apollo3p_uart0, 
                     DT_PROP(DT_NODELABEL(uart0), label),
                     apollo3p_uart_init,
+					NULL,
 			        &apollo3p_uart0_private, 
 			        &apollo3p_uart0_config, 
 			        PRE_KERNEL_1, 
@@ -471,9 +473,10 @@ static const struct apollo_uart_config apollo3p_uart1_config = {
     .pwren = BIT(8),
 };
 
-DEVICE_AND_API_INIT(apollo3p_uart1, 
+DEVICE_DEFINE(apollo3p_uart1, 
                     DT_PROP(DT_NODELABEL(uart1), label),
                     apollo3p_uart_init,
+					NULL,
 			        &apollo3p_uart1_private, 
 			        &apollo3p_uart1_config, 
 			        PRE_KERNEL_1, 

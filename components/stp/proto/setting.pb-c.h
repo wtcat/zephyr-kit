@@ -18,26 +18,48 @@ PROTOBUF_C__BEGIN_DECLS
 typedef struct _Setting__Time Setting__Time;
 typedef struct _Setting__Alarm Setting__Alarm;
 typedef struct _Setting__Alarm__Body Setting__Alarm__Body;
+typedef struct _Setting__Silence Setting__Silence;
+typedef struct _Setting__Silence__Time Setting__Silence__Time;
+typedef struct _Setting__RemindMode Setting__RemindMode;
 
 
 /* --- enums --- */
 
+typedef enum _Setting__Alarm__Body__WeekDay {
+  SETTING__ALARM__BODY__WEEK_DAY__MONDAY = 1,
+  SETTING__ALARM__BODY__WEEK_DAY__TUESDAY = 2,
+  SETTING__ALARM__BODY__WEEK_DAY__WEDNESDAY = 4,
+  SETTING__ALARM__BODY__WEEK_DAY__THURSDAY = 8,
+  SETTING__ALARM__BODY__WEEK_DAY__FRIDAY = 16,
+  SETTING__ALARM__BODY__WEEK_DAY__SATURDAY = 32,
+  SETTING__ALARM__BODY__WEEK_DAY__SUNDAY = 64
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(SETTING__ALARM__BODY__WEEK_DAY)
+} Setting__Alarm__Body__WeekDay;
+typedef enum _Setting__Silence__State {
+  SETTING__SILENCE__STATE__DISABLE = 0,
+  SETTING__SILENCE__STATE__ENABLE = 1
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(SETTING__SILENCE__STATE)
+} Setting__Silence__State;
+typedef enum _Setting__RemindMode__Mode {
+  SETTING__REMIND_MODE__MODE__DEFAULT = 0,
+  SETTING__REMIND_MODE__MODE__SHAKE = 1,
+  SETTING__REMIND_MODE__MODE__DISPLAY = 2
+    PROTOBUF_C__FORCE_ENUM_TO_BE_INT_SIZE(SETTING__REMIND_MODE__MODE)
+} Setting__RemindMode__Mode;
 
 /* --- messages --- */
 
 struct  _Setting__Time
 {
   ProtobufCMessage base;
-  uint32_t year;
-  uint32_t mon;
-  uint32_t day;
-  uint32_t hour;
-  uint32_t min;
-  uint32_t sec;
+  /*
+   *Unix timestamp
+   */
+  uint32_t unix_timestamp;
 };
 #define SETTING__TIME__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&setting__time__descriptor) \
-    , 0, 0, 0, 0, 0, 0 }
+    , 0 }
 
 
 struct  _Setting__Alarm__Body
@@ -46,10 +68,7 @@ struct  _Setting__Alarm__Body
   uint32_t hour;
   uint32_t min;
   uint32_t sec;
-  /*
-   *Monday(0x01), Tuesday(0x02),..., Sunday(0x40)
-   */
-  uint32_t weekbits;
+  uint32_t weekdays;
   protobuf_c_boolean repeat;
 };
 #define SETTING__ALARM__BODY__INIT \
@@ -66,6 +85,41 @@ struct  _Setting__Alarm
 #define SETTING__ALARM__INIT \
  { PROTOBUF_C_MESSAGE_INIT (&setting__alarm__descriptor) \
     , 0,NULL }
+
+
+struct  _Setting__Silence__Time
+{
+  ProtobufCMessage base;
+  uint32_t hour_start;
+  uint32_t min_start;
+  uint32_t hour_end;
+  uint32_t min_end;
+};
+#define SETTING__SILENCE__TIME__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&setting__silence__time__descriptor) \
+    , 0, 0, 0, 0 }
+
+
+struct  _Setting__Silence
+{
+  ProtobufCMessage base;
+  Setting__Silence__State enable;
+  size_t n_time;
+  Setting__Silence__Time **time;
+};
+#define SETTING__SILENCE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&setting__silence__descriptor) \
+    , SETTING__SILENCE__STATE__DISABLE, 0,NULL }
+
+
+struct  _Setting__RemindMode
+{
+  ProtobufCMessage base;
+  Setting__RemindMode__Mode mode;
+};
+#define SETTING__REMIND_MODE__INIT \
+ { PROTOBUF_C_MESSAGE_INIT (&setting__remind_mode__descriptor) \
+    , SETTING__REMIND_MODE__MODE__DEFAULT }
 
 
 /* Setting__Time methods */
@@ -109,6 +163,47 @@ Setting__Alarm *
 void   setting__alarm__free_unpacked
                      (Setting__Alarm *message,
                       ProtobufCAllocator *allocator);
+/* Setting__Silence__Time methods */
+void   setting__silence__time__init
+                     (Setting__Silence__Time         *message);
+/* Setting__Silence methods */
+void   setting__silence__init
+                     (Setting__Silence         *message);
+size_t setting__silence__get_packed_size
+                     (const Setting__Silence   *message);
+size_t setting__silence__pack
+                     (const Setting__Silence   *message,
+                      uint8_t             *out);
+size_t setting__silence__pack_to_buffer
+                     (const Setting__Silence   *message,
+                      ProtobufCBuffer     *buffer);
+Setting__Silence *
+       setting__silence__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   setting__silence__free_unpacked
+                     (Setting__Silence *message,
+                      ProtobufCAllocator *allocator);
+/* Setting__RemindMode methods */
+void   setting__remind_mode__init
+                     (Setting__RemindMode         *message);
+size_t setting__remind_mode__get_packed_size
+                     (const Setting__RemindMode   *message);
+size_t setting__remind_mode__pack
+                     (const Setting__RemindMode   *message,
+                      uint8_t             *out);
+size_t setting__remind_mode__pack_to_buffer
+                     (const Setting__RemindMode   *message,
+                      ProtobufCBuffer     *buffer);
+Setting__RemindMode *
+       setting__remind_mode__unpack
+                     (ProtobufCAllocator  *allocator,
+                      size_t               len,
+                      const uint8_t       *data);
+void   setting__remind_mode__free_unpacked
+                     (Setting__RemindMode *message,
+                      ProtobufCAllocator *allocator);
 /* --- per-message closures --- */
 
 typedef void (*Setting__Time_Closure)
@@ -120,6 +215,15 @@ typedef void (*Setting__Alarm__Body_Closure)
 typedef void (*Setting__Alarm_Closure)
                  (const Setting__Alarm *message,
                   void *closure_data);
+typedef void (*Setting__Silence__Time_Closure)
+                 (const Setting__Silence__Time *message,
+                  void *closure_data);
+typedef void (*Setting__Silence_Closure)
+                 (const Setting__Silence *message,
+                  void *closure_data);
+typedef void (*Setting__RemindMode_Closure)
+                 (const Setting__RemindMode *message,
+                  void *closure_data);
 
 /* --- services --- */
 
@@ -129,6 +233,12 @@ typedef void (*Setting__Alarm_Closure)
 extern const ProtobufCMessageDescriptor setting__time__descriptor;
 extern const ProtobufCMessageDescriptor setting__alarm__descriptor;
 extern const ProtobufCMessageDescriptor setting__alarm__body__descriptor;
+extern const ProtobufCEnumDescriptor    setting__alarm__body__week_day__descriptor;
+extern const ProtobufCMessageDescriptor setting__silence__descriptor;
+extern const ProtobufCMessageDescriptor setting__silence__time__descriptor;
+extern const ProtobufCEnumDescriptor    setting__silence__state__descriptor;
+extern const ProtobufCMessageDescriptor setting__remind_mode__descriptor;
+extern const ProtobufCEnumDescriptor    setting__remind_mode__mode__descriptor;
 
 PROTOBUF_C__END_DECLS
 

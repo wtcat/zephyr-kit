@@ -341,70 +341,24 @@ static int gpio_apollo3p_init(const struct device *dev)
             NULL, 0);
         irq_enable(GPIO_IRQn);
     }
-    
     return 0;
 }
 
-/* 
- * Define GPIO device 0(Pin0 - Pin31)
- */
-#if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(gpio0), ambiq_apollo3p_gpio, okay)
-static struct gpio_apollo3p_data apollo3p_gpio0_private; 
-static const struct gpio_apollo3p_cfg apollo3p_gpio0_config = { 
-    .common = {GPIO_PORT_PIN_MASK_FROM_NGPIOS(32)},
-    .intbase = (void *)(&GPIO->INT0EN),
-    .port_offset = 0,
-    .pin_offset = 0
-}; 
-DEVICE_AND_API_INIT(apollo3p_gpio0, 
-                    DT_PROP(DT_NODELABEL(gpio0), label),
-                    gpio_apollo3p_init,
-                    &apollo3p_gpio0_private,
-                    &apollo3p_gpio0_config,
-                    POST_KERNEL,
-                    CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
-                    &gpio_apollo3p_driver_api);
-#endif
+#define DT_DRV_COMPAT ambiq_apollo3p_gpio
+#define GPIO_INIT(nid) \
+    static struct gpio_apollo3p_data apollo3p_gpio##nid##_private; \
+    static const struct gpio_apollo3p_cfg apollo3p_gpio##nid##_config = { \
+        .common = {GPIO_PORT_PIN_MASK_FROM_NGPIOS(32)}, \
+        .intbase = (void *)(&GPIO->INT##nid##EN), \
+        .port_offset = 4 * nid, \
+        .pin_offset = 32 * nid \
+    }; \
+    DEVICE_DT_DEFINE(DT_DRV_INST(nid),   \
+        gpio_apollo3p_init,              \
+        device_pm_control_nop,          \
+        &apollo3p_gpio##nid##_private,                   \
+        &apollo3p_gpio##nid##_config,           \
+        POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,  \
+        &gpio_apollo3p_driver_api);
 
-/* 
- * Define GPIO device 1(Pin32 - Pin63)
- */
-#if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(gpio1), ambiq_apollo3p_gpio, okay)
-static struct gpio_apollo3p_data apollo3p_gpio1_private; 
-static const struct gpio_apollo3p_cfg apollo3p_gpio1_config = { 
-    .common = {GPIO_PORT_PIN_MASK_FROM_NGPIOS(32)},
-    .intbase = (void *)(&GPIO->INT1EN),
-    .port_offset = 4,
-    .pin_offset = 32
-}; 
-DEVICE_AND_API_INIT(apollo3p_gpio1, 
-                    DT_PROP(DT_NODELABEL(gpio1), label),
-                    gpio_apollo3p_init,
-                    &apollo3p_gpio1_private,
-                    &apollo3p_gpio1_config,
-                    POST_KERNEL,
-                    CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
-                    &gpio_apollo3p_driver_api);
-#endif
-
-/* 
- * Define GPIO device 2(Pin64 - Pin73)
- */
-#if DT_NODE_HAS_COMPAT_STATUS(DT_NODELABEL(gpio2), ambiq_apollo3p_gpio, okay)
-static struct gpio_apollo3p_data apollo3p_gpio2_private; 
-static const struct gpio_apollo3p_cfg apollo3p_gpio2_config = { 
-    .common = {GPIO_PORT_PIN_MASK_FROM_NGPIOS(10)},
-    .intbase = (void *)(&GPIO->INT2EN),
-    .port_offset = 8,
-    .pin_offset = 64
-}; 
-DEVICE_AND_API_INIT(apollo3p_gpio2, 
-                    DT_PROP(DT_NODELABEL(gpio2), label),
-                    gpio_apollo3p_init,
-                    &apollo3p_gpio2_private,
-                    &apollo3p_gpio2_config,
-                    POST_KERNEL,
-                    CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,
-                    &gpio_apollo3p_driver_api);
-#endif
-
+DT_INST_FOREACH_STATUS_OKAY(GPIO_INIT)

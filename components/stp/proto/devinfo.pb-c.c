@@ -263,7 +263,37 @@ const ProtobufCMessageDescriptor info__device__descriptor =
   (ProtobufCMessageInit) info__device__init,
   NULL,NULL,NULL    /* reserved[123] */
 };
-static const ProtobufCFieldDescriptor info__battery__field_descriptors[1] =
+static const ProtobufCEnumValue info__battery__status__enum_values_by_number[3] =
+{
+  { "IDLE", "INFO__BATTERY__STATUS__IDLE", 0 },
+  { "CHARGING", "INFO__BATTERY__STATUS__CHARGING", 1 },
+  { "CHARGE_COMPLETED", "INFO__BATTERY__STATUS__CHARGE_COMPLETED", 2 },
+};
+static const ProtobufCIntRange info__battery__status__value_ranges[] = {
+{0, 0},{0, 3}
+};
+static const ProtobufCEnumValueIndex info__battery__status__enum_values_by_name[3] =
+{
+  { "CHARGE_COMPLETED", 2 },
+  { "CHARGING", 1 },
+  { "IDLE", 0 },
+};
+const ProtobufCEnumDescriptor info__battery__status__descriptor =
+{
+  PROTOBUF_C__ENUM_DESCRIPTOR_MAGIC,
+  "info.Battery.Status",
+  "Status",
+  "Info__Battery__Status",
+  "info",
+  3,
+  info__battery__status__enum_values_by_number,
+  3,
+  info__battery__status__enum_values_by_name,
+  1,
+  info__battery__status__value_ranges,
+  NULL,NULL,NULL,NULL   /* reserved[1234] */
+};
+static const ProtobufCFieldDescriptor info__battery__field_descriptors[2] =
 {
   {
     "level",
@@ -277,14 +307,27 @@ static const ProtobufCFieldDescriptor info__battery__field_descriptors[1] =
     0,             /* flags */
     0,NULL,NULL    /* reserved1,reserved2, etc */
   },
+  {
+    "status",
+    2,
+    PROTOBUF_C_LABEL_OPTIONAL,
+    PROTOBUF_C_TYPE_UINT32,
+    offsetof(Info__Battery, has_status),
+    offsetof(Info__Battery, status),
+    NULL,
+    NULL,
+    0,             /* flags */
+    0,NULL,NULL    /* reserved1,reserved2, etc */
+  },
 };
 static const unsigned info__battery__field_indices_by_name[] = {
   0,   /* field[0] = level */
+  1,   /* field[1] = status */
 };
 static const ProtobufCIntRange info__battery__number_ranges[1 + 1] =
 {
   { 1, 0 },
-  { 0, 1 }
+  { 0, 2 }
 };
 const ProtobufCMessageDescriptor info__battery__descriptor =
 {
@@ -294,7 +337,7 @@ const ProtobufCMessageDescriptor info__battery__descriptor =
   "Info__Battery",
   "info",
   sizeof(Info__Battery),
-  1,
+  2,
   info__battery__field_descriptors,
   info__battery__field_indices_by_name,
   1,  info__battery__number_ranges,
