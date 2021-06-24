@@ -446,13 +446,20 @@ static void pt_timer(struct k_timer *timer)
 #endif
 }
 
+static void kscan_default_handler(const struct device *dev, uint32_t row, 
+    uint32_t column, bool pressed)
+{
+    //LOG_WRN("Please set callback for touch-pannel\n");
+}
+
 static struct pt_core_data cd_prv = {0};
 static int pt_i2c_probe(const struct device *dev)
 {
 	struct cyttsp5_data *data = dev->data;
 
-	data->callback = NULL;
+	data->callback = kscan_default_handler;
 	data->dev = dev;
+	data->enable = false;
 
 	struct pt_core_data *cdata;
 	// u32 value;
@@ -509,10 +516,14 @@ int cyttsp5_config(const struct device *dev, kscan_callback_t callback)
 }
 int cyttsp5_disable_callback(const struct device *dev)
 {
+	struct cyttsp5_data *data = dev->data;
+	data->enable = false;
 	return 0;
 }
 int cyttsp5_enable_callback(const struct device *dev)
 {
+	struct cyttsp5_data *data = dev->data;
+	data->enable = true;
 	return 0;
 }
 

@@ -1,8 +1,6 @@
 #include "watch_face_theme_draw.h"
-
 //#include "guix_simple_resources.h"
 //#include "guix_simple_specifications.h"
-
 #include "watch_face_manager.h"
 #include "watch_face_port.h"
 extern int wf_mgr_color_get(uint32_t index, void *addr);
@@ -182,6 +180,23 @@ void wf_draw_multi_img_one(struct wf_element_style *style, GX_WIDGET *widget)
 			id = para->res_id_start + 1;
 		} else {
 			id = para->res_id_start;
+		}
+		break;
+	}
+	case ELEMENT_TYPE_HOUR_TENS:
+	case ELEMENT_TYPE_HOUR_UNITS:
+	case ELEMENT_TYPE_MIN_TENS:
+	case ELEMENT_TYPE_MIN_UNITS:
+	case ELEMENT_TYPE_SEC_TENS:
+	case ELEMENT_TYPE_SEC_UNITS: {
+		uint8_t curr_value = 0;
+		wf_port_get_value func = wf_get_data_func(style->e_type);
+		if (func != NULL) {
+			func(&curr_value);
+		}
+		id = para->res_id_start + curr_value;
+		if (id > para->res_id_end) {
+			return;
 		}
 		break;
 	}
@@ -393,6 +408,8 @@ void wf_draw_arc(struct wf_element_style *style, GX_WIDGET *widget)
 	gx_canvas_arc_draw(x_center, y_center, r, start_angle, end_angle);
 }
 
+static char *week_day[7] = {"Sun", "Mon", "Tue", "Wed", "Thur", "Fri", "Sat"};
+static char *am_pm[2] = {"AM", "PM"};
 void wf_draw_sys_font(struct wf_element_style *style, GX_WIDGET *widget)
 {
 	uint32_t value = 0;
@@ -408,7 +425,16 @@ void wf_draw_sys_font(struct wf_element_style *style, GX_WIDGET *widget)
 
 	GX_PROMPT *prompt = (GX_PROMPT *)widget;
 	static char disp[20];
-	snprintf(disp, 20, "%d", value);
+	if ((style->e_type == ELEMENT_TYPE_HOUR) || (style->e_type == ELEMENT_TYPE_MIN) ||
+		(style->e_type == ELEMENT_TYPE_SEC) || (style->e_type == ELEMENT_TYPE_DAY)) {
+		snprintf(disp, sizeof(disp), "%02d", value);
+	} else if (style->e_type == ELEMENT_TYPE_WEEK_DAY) {
+		strncpy(disp, week_day[value], sizeof(disp));
+	} else if (style->e_type == ELEMENT_TYPE_AM_PM) {
+		strncpy(disp, am_pm[value], sizeof(disp));
+	} else {
+		snprintf(disp, sizeof(disp), "%d", value);
+	}
 	GX_STRING string;
 	string.gx_string_ptr = disp;
 	string.gx_string_length = strlen(disp);

@@ -5,8 +5,8 @@
 /*  specification file(s). For more information please refer to the Azure RTOS */
 /*  GUIX Studio User Guide, or visit our web site at azure.com/rtos            */
 /*                                                                             */
-/*  GUIX Studio Revision 6.1.5.0                                               */
-/*  Date (dd.mm.yyyy): 24. 3.2021   Time (hh:mm): 17:26                        */
+/*  GUIX Studio Revision 6.1.7.0                                               */
+/*  Date (dd.mm.yyyy): 18. 6.2021   Time (hh:mm): 10:05                        */
 /*******************************************************************************/
 
 
@@ -81,40 +81,45 @@ typedef struct
 
 /* Declare top-level control blocks                                            */
 
-typedef struct APP_COMPASS_WINDOW_CONTROL_BLOCK_STRUCT
+typedef struct APP_STOP_WATCH_WINDOW_CONTROL_BLOCK_STRUCT
 {
     GX_WINDOW_MEMBERS_DECLARE
-} APP_COMPASS_WINDOW_CONTROL_BLOCK;
+} APP_STOP_WATCH_WINDOW_CONTROL_BLOCK;
 
-typedef struct WF_LIST_CONTROL_BLOCK_STRUCT
-{
-    GX_HORIZONTAL_LIST_MEMBERS_DECLARE
-} WF_LIST_CONTROL_BLOCK;
-
-typedef struct BT_PAIR_WINDOW_CONTROL_BLOCK_STRUCT
+typedef struct APP_TIMER_WINDOW_CONTROL_BLOCK_STRUCT
 {
     GX_WINDOW_MEMBERS_DECLARE
-} BT_PAIR_WINDOW_CONTROL_BLOCK;
+} APP_TIMER_WINDOW_CONTROL_BLOCK;
 
-typedef struct LANGUAGE_SEL_WINDOW_CONTROL_BLOCK_STRUCT
+typedef struct APP_BREATH_WINDOW_CONTROL_BLOCK_STRUCT
 {
     GX_WINDOW_MEMBERS_DECLARE
-} LANGUAGE_SEL_WINDOW_CONTROL_BLOCK;
+} APP_BREATH_WINDOW_CONTROL_BLOCK;
 
-typedef struct NOTIFY_CENTER_WINDOW_CONTROL_BLOCK_STRUCT
+typedef struct APP_SPO2_WINDOW_CONTROL_BLOCK_STRUCT
 {
     GX_WINDOW_MEMBERS_DECLARE
-} NOTIFY_CENTER_WINDOW_CONTROL_BLOCK;
+} APP_SPO2_WINDOW_CONTROL_BLOCK;
 
-typedef struct CONTROL_CENTER_WINDOW_CONTROL_BLOCK_STRUCT
+typedef struct APP_HEART_WINDOW_CONTROL_BLOCK_STRUCT
 {
     GX_WINDOW_MEMBERS_DECLARE
-} CONTROL_CENTER_WINDOW_CONTROL_BLOCK;
+} APP_HEART_WINDOW_CONTROL_BLOCK;
 
-typedef struct APP_LIST_WINDOW_CONTROL_BLOCK_STRUCT
+typedef struct LANGUAGE_WINDOW_CONTROL_BLOCK_STRUCT
 {
     GX_WINDOW_MEMBERS_DECLARE
-} APP_LIST_WINDOW_CONTROL_BLOCK;
+} LANGUAGE_WINDOW_CONTROL_BLOCK;
+
+typedef struct MESSAGE_WINDOW_CONTROL_BLOCK_STRUCT
+{
+    GX_WINDOW_MEMBERS_DECLARE
+} MESSAGE_WINDOW_CONTROL_BLOCK;
+
+typedef struct PAIRING_WINDOW_CONTROL_BLOCK_STRUCT
+{
+    GX_WINDOW_MEMBERS_DECLARE
+} PAIRING_WINDOW_CONTROL_BLOCK;
 
 typedef struct ROOT_WINDOW_CONTROL_BLOCK_STRUCT
 {
@@ -123,18 +128,79 @@ typedef struct ROOT_WINDOW_CONTROL_BLOCK_STRUCT
     GX_WINDOW root_window_wf_window;
 } ROOT_WINDOW_CONTROL_BLOCK;
 
+typedef struct APP_MUSIC_WINDOW_CONTROL_BLOCK_STRUCT
+{
+    GX_WINDOW_MEMBERS_DECLARE
+} APP_MUSIC_WINDOW_CONTROL_BLOCK;
+
+typedef struct APP_REMINDERS_WINDOW_CONTROL_BLOCK_STRUCT
+{
+    GX_WINDOW_MEMBERS_DECLARE
+} APP_REMINDERS_WINDOW_CONTROL_BLOCK;
+
+typedef struct APP_ALARM_WINDOW_CONTROL_BLOCK_STRUCT
+{
+    GX_WINDOW_MEMBERS_DECLARE
+} APP_ALARM_WINDOW_CONTROL_BLOCK;
+
+typedef struct APP_TODAY_WINDOW_CONTROL_BLOCK_STRUCT
+{
+    GX_WINDOW_MEMBERS_DECLARE
+} APP_TODAY_WINDOW_CONTROL_BLOCK;
+
+typedef struct APP_SPORT_WINDOW_CONTROL_BLOCK_STRUCT
+{
+    GX_WINDOW_MEMBERS_DECLARE
+} APP_SPORT_WINDOW_CONTROL_BLOCK;
+
+typedef struct WF_LIST_CONTROL_BLOCK_STRUCT
+{
+    GX_HORIZONTAL_LIST_MEMBERS_DECLARE
+} WF_LIST_CONTROL_BLOCK;
+
+typedef struct CONTROL_CENTER_WINDOW_CONTROL_BLOCK_STRUCT
+{
+    GX_WINDOW_MEMBERS_DECLARE
+} CONTROL_CENTER_WINDOW_CONTROL_BLOCK;
+
+typedef struct APP_SETTING_WINDOW_CONTROL_BLOCK_STRUCT
+{
+    GX_WINDOW_MEMBERS_DECLARE
+} APP_SETTING_WINDOW_CONTROL_BLOCK;
+
+typedef struct APP_LIST_WINDOW_CONTROL_BLOCK_STRUCT
+{
+    GX_WINDOW_MEMBERS_DECLARE
+} APP_LIST_WINDOW_CONTROL_BLOCK;
+
+typedef struct APP_COMPASS_WINDOW_CONTROL_BLOCK_STRUCT
+{
+    GX_WINDOW_MEMBERS_DECLARE
+} APP_COMPASS_WINDOW_CONTROL_BLOCK;
+
 
 /* extern statically defined control blocks                                    */
 
 #ifndef GUIX_STUDIO_GENERATED_FILE
-extern APP_COMPASS_WINDOW_CONTROL_BLOCK app_compass_window;
-extern WF_LIST_CONTROL_BLOCK wf_list;
-extern BT_PAIR_WINDOW_CONTROL_BLOCK bt_pair_window;
-extern LANGUAGE_SEL_WINDOW_CONTROL_BLOCK language_sel_window;
-extern NOTIFY_CENTER_WINDOW_CONTROL_BLOCK notify_center_window;
-extern CONTROL_CENTER_WINDOW_CONTROL_BLOCK control_center_window;
-extern APP_LIST_WINDOW_CONTROL_BLOCK app_list_window;
+extern APP_STOP_WATCH_WINDOW_CONTROL_BLOCK app_stop_watch_window;
+extern APP_TIMER_WINDOW_CONTROL_BLOCK app_timer_window;
+extern APP_BREATH_WINDOW_CONTROL_BLOCK app_breath_window;
+extern APP_SPO2_WINDOW_CONTROL_BLOCK app_spo2_window;
+extern APP_HEART_WINDOW_CONTROL_BLOCK app_heart_window;
+extern LANGUAGE_WINDOW_CONTROL_BLOCK language_window;
+extern MESSAGE_WINDOW_CONTROL_BLOCK message_window;
+extern PAIRING_WINDOW_CONTROL_BLOCK pairing_window;
 extern ROOT_WINDOW_CONTROL_BLOCK root_window;
+extern APP_MUSIC_WINDOW_CONTROL_BLOCK app_music_window;
+extern APP_REMINDERS_WINDOW_CONTROL_BLOCK app_reminders_window;
+extern APP_ALARM_WINDOW_CONTROL_BLOCK app_alarm_window;
+extern APP_TODAY_WINDOW_CONTROL_BLOCK app_today_window;
+extern APP_SPORT_WINDOW_CONTROL_BLOCK app_sport_window;
+extern WF_LIST_CONTROL_BLOCK wf_list;
+extern CONTROL_CENTER_WINDOW_CONTROL_BLOCK control_center_window;
+extern APP_SETTING_WINDOW_CONTROL_BLOCK app_setting_window;
+extern APP_LIST_WINDOW_CONTROL_BLOCK app_list_window;
+extern APP_COMPASS_WINDOW_CONTROL_BLOCK app_compass_window;
 #endif
 
 /* Declare event process functions, draw functions, and callback functions     */
@@ -161,6 +227,7 @@ typedef struct GX_STUDIO_DISPLAY_INFO_STRUCT
     GX_WINDOW_ROOT *root_window;
     GX_COLOR   *canvas_memory;
     ULONG      canvas_memory_size;
+    USHORT     rotation_angle;
 } GX_STUDIO_DISPLAY_INFO;
 
 

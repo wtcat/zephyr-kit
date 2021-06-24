@@ -483,7 +483,7 @@
 #define MPU_INIT_SENSOR_RATE_LNM	12	/* min Hz in LNM */
 #define MPU_INIT_SENSOR_RATE_LPM	3	/* min Hz in LPM */
 #define MAX_FIFO_PACKET_READ		16
-#define HARDWARE_FIFO_SIZE		2048
+#define HARDWARE_FIFO_SIZE		2
 #define FIFO_SIZE			(HARDWARE_FIFO_SIZE * 7 / 8)
 #define LEFT_OVER_BYTES			128
 #define POWER_UP_TIME			100

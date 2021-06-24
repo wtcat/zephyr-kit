@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <time.h>
 
+#include <version.h>
 #include <kernel.h>
 #include <soc.h>
 #include <sys/util.h>
@@ -236,7 +237,7 @@ static int rtc_apollo3p_set_top_value(const struct device *dev,
 	}
 }
 
-static uint32_t rtc_apollo3p_get_max_relative_alarm(const struct device *dev)
+static uint32_t __unused rtc_apollo3p_get_max_relative_alarm(const struct device *dev)
 {
 	const struct counter_config_info *info = dev->config;
 
@@ -342,7 +343,9 @@ static const struct rtc_driver_api rtc_apollo3p_driver_api = {
 			.set_top_value = rtc_apollo3p_set_top_value,
 			.get_pending_int = rtc_apollo3p_get_pending_int,
 			.get_top_value = rtc_apollo3p_get_top_value,
+#if (KERNEL_VERSION_NUMBER < ZEPHYR_VERSION(2,6,0))
 			.get_max_relative_alarm = rtc_apollo3p_get_max_relative_alarm,
+#endif
 		},
 	// extend api
 	.set_value = rtc_apollo3p_set_value,
@@ -350,7 +353,7 @@ static const struct rtc_driver_api rtc_apollo3p_driver_api = {
 };
 
 DEVICE_DEFINE(apollo3p_rtc, "apollo3p_rtc", &rtc_apollo3p_init,
-			  device_pm_control_nop, &rtc_data, &counter_config, PRE_KERNEL_1,
+			  NULL, &rtc_data, &counter_config, PRE_KERNEL_1,
 			  CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
 			  &rtc_apollo3p_driver_api.base);
 

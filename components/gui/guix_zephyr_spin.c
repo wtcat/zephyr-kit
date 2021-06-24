@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
+#include <version.h>
 #include <kernel.h>
 #include <app_memory/app_memdomain.h>
 #include <app_memory/mem_domain.h>
@@ -45,6 +46,7 @@ struct guix_struct {
     bool timer_active;
 
     VOID (*entry)(ULONG); /* Point to GUIX thread entry */
+    bool (*filter)(GX_EVENT *e); /* Filter GUIX event */
 };
 
 
@@ -55,13 +57,8 @@ static struct k_mem_domain guix_mem_domain;
 
 static K_THREAD_STACK_DEFINE(guix_stack, CONFIG_GUIX_THREAD_STACK_SIZE);
 static struct k_thread guix_thread;
-    
 static K_MUTEX_DEFINE(guix_lock);
 
-static struct guix_struct guix_class = {
-    .pending = LIST_HEAD_INIT(guix_class.pending),
-    .free = LIST_HEAD_INIT(guix_class.free),
-};
 
 static void guix_event_queue_init(struct guix_struct *guix)
 {
@@ -130,62 +127,83 @@ static void guix_timer_entry(struct k_timer *timer)
     _gx_system_timer_expiration(0);
 }
 
-static void guix_thread_adaptor(void *p1, void *p2, void *p3)
+static bool guix_sleep(struct guix_struct *gx, bool nowait)
 {
-    struct guix_struct *gx = (struct guix_struct *)p1;
-    GX_EVENT event;
-    bool wake_up ;
-    UINT ret;
+    bool wake_up;
 
+    /* GUIX thread exited and stop timer */
+    if (gx->timer_running) {
+        wake_up = true;
+        gx->timer_active = false;
+        k_timer_stop(&gx->timer);
+    } else {
+        wake_up = false;
+    }
+    /* Notify system that gui will enter in suspend state */
+    _guix_suspend_notify(GUIX_ENTER_SLEEP);
+    
+    /* Flush event and wait */
     for (;;) {
-        /* Process GUI event */
-        gx->entry(0);
-
-        /* GUIX thread exited and stop timer */
-        if (gx->timer_running) {
-            wake_up = true;
-            gx->timer_active = false;
-            k_timer_stop(&gx->timer);
-        } else {
-            wake_up = false;
-        }
-
-        /* Notify system that gui will enter in suspend state */
-        _guix_suspend_notify(GUIX_ENTER_SLEEP);
-        
-        /* Flush event and wait */
-        do {
-            ret = gx_generic_event_pop(&event, GX_FALSE);
-            if (ret == GX_FAILURE) {
-                ret = gx_generic_event_pop(&event, GX_TRUE);
-				if (event.gx_event_type == GX_EVENT_KEY_DOWN) {
-					if (event.gx_event_payload.gx_event_ushortdata[0] == GX_KEY_HOME) {
-						continue;
-					}
-				}
+        GX_EVENT event;
+        UINT ret = gx_generic_event_pop(&event, GX_FALSE);
+        if (ret == GX_SUCCESS)
+            continue;
+        if (nowait)
+            break;
+        ret = gx_generic_event_pop(&event, GX_TRUE);
+        if (ret == GX_SUCCESS) {
+            if (gx->filter(&event))
                 break;
-            }
-        } while (true);
-
-        /* Refresh screen */
-        event.gx_event_type = GX_EVENT_REDRAW;
-        event.gx_event_target = NULL;
-        gx_system_event_send(&event);
-
-        /* Notify system that gui is ready */
-        _guix_suspend_notify(GUIX_EXIT_SLEEP);
-        
-        /* Wake up GUIX timer */
-        if (wake_up) {
-            gx->timer_active = true;
-            k_timer_start(&gx->timer, K_MSEC(GX_SYSTEM_TIMER_MS), 
-                K_MSEC(GX_SYSTEM_TIMER_MS));
         }
+    }
+    return wake_up;
+}
+
+static void guix_wake_up(struct guix_struct *gx, bool active_timer)
+{
+    /* Notify system that gui is ready */
+    _guix_suspend_notify(GUIX_EXIT_SLEEP);
+    
+    /* Wake up GUIX timer */
+    if (active_timer) {
+        gx->timer_active = true;
+        k_timer_start(&gx->timer, K_MSEC(GX_SYSTEM_TIMER_MS), 
+            K_MSEC(GX_SYSTEM_TIMER_MS));
     }
 }
 
+static bool guix_default_event_filter(GX_EVENT *e)
+{
+    (void) e;
+    return true;
+}
+
+static void guix_thread_adaptor(void *arg)
+{
+    struct guix_struct *gx = (struct guix_struct *)arg;
+
+    guix_wake_up(gx, false);
+    for (;;) {
+        /* Process GUI event */
+        gx->entry(0);
+        guix_wake_up(gx, guix_sleep(gx, false));
+    }
+}
+
+static struct guix_struct guix_class = {
+    .pending = LIST_HEAD_INIT(guix_class.pending),
+    .free = LIST_HEAD_INIT(guix_class.free),
+    .filter = guix_default_event_filter
+};
+
+void guix_event_filter_set(bool (*filter)(GX_EVENT *))
+{
+    if (filter)
+        guix_class.filter = filter;
+}
+
 /* 
- * rtos initialize: perform any setup that needs to be done 
+ * RTOS initialize: perform any setup that needs to be done 
  * before the GUIX task runs here 
  */
 VOID gx_generic_rtos_initialize(VOID)
@@ -203,6 +221,22 @@ VOID gx_generic_rtos_initialize(VOID)
 #endif
 }
 
+#if (KERNEL_VERSION_NUMBER < ZEPHYR_VERSION(2,6,0))
+static void gx_thread_abort(struct k_thread *aborted)
+{
+    struct guix_struct *gx = &guix_class;
+    GX_TIMER **timer;
+
+    guix_sleep(gx, true);
+    /* Free all timer */
+    timer = &_gx_system_free_timer_list;
+    while (*timer)
+        timer = &((*timer)->gx_timer_next);
+    *timer = _gx_system_active_timer_list;
+    _gx_system_active_timer_list = NULL;
+}
+#endif
+
 /* thread_start: start the GUIX thread running. */
 UINT gx_generic_thread_start(VOID(*guix_thread_entry)(ULONG))
 {
@@ -212,17 +246,19 @@ UINT gx_generic_thread_start(VOID(*guix_thread_entry)(ULONG))
     thread = k_thread_create(&guix_thread,
                               guix_stack,
                               K_KERNEL_STACK_SIZEOF(guix_stack),
-                              guix_thread_adaptor,
+                              (k_thread_entry_t)guix_thread_adaptor,
                               gx, NULL, NULL,
                               CONFIG_GUIX_THREAD_PRIORITY, GUIX_THREAD_OPTIONS,
                               K_FOREVER);
-
 #ifdef CONFIG_GUIX_USER_MODE
     struct k_mem_partition *parts[] = {&guix_partition};
     k_mem_domain_init(&guix_mem_domain, 1, parts);
     k_mem_domain_add_thread(&guix_mem_domain, thread);
 #endif
-    k_thread_name_set(thread, "GUIX-THREAD");
+    k_thread_name_set(thread, "/gui@main");
+#if (KERNEL_VERSION_NUMBER < ZEPHYR_VERSION(2,6,0))
+    thread->fn_abort = gx_thread_abort;
+#endif
     gx->entry = guix_thread_entry;
     k_thread_start(thread);
     return GX_SUCCESS;
@@ -244,11 +280,12 @@ UINT gx_generic_event_post(GX_EVENT *event_ptr)
     ge->event = *event_ptr;
     if (list_empty(&gx->pending)) {
         list_add_tail(&ge->node, &gx->pending);
+        k_spin_unlock(&gx->lock, key);
         k_sem_give(&gx->wait);
     } else {
         list_add_tail(&ge->node, &gx->pending);
+        k_spin_unlock(&gx->lock, key);
     }
-    k_spin_unlock(&gx->lock, key);
     return GX_SUCCESS;
 }
 
@@ -291,11 +328,12 @@ UINT gx_generic_event_fold(GX_EVENT *event_ptr)
     ge->event = *event_ptr;
     if (list_empty(&gx->pending)) {
         list_add_tail(&ge->node, &gx->pending);
+        k_spin_unlock(&gx->lock, key);
         k_sem_give(&gx->wait);
     } else {
         list_add_tail(&ge->node, &gx->pending);
+        k_spin_unlock(&gx->lock, key);
     }
-    k_spin_unlock(&gx->lock, key);
     return GX_SUCCESS;
 }
 

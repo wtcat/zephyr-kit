@@ -20,6 +20,11 @@ config: check
 			-DBOARD=$(BOARD) \
 			$(SOURCE_DIRECTORY)/../project_wkpace/)
 
+submodule_update: check
+	rm -rf ../zephyr_pkg/modules
+	west config manifest.path  ../project_wkpace  && \
+	west update
+
 menuconfig:check
 	make -C $(BUILD_DIR_WATCH_NO_BOOT) menuconfig
 

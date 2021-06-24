@@ -9,8 +9,7 @@ struct watch_face_theme1_ctl watch_face_theme_1 = {
 		{
 			.wfh_magic = WATCH_FACE_HDR_MAGIC_NUM,
 			.wfh_hdr_size = sizeof(struct watch_face_theme1_ctl),
-			.wfh_element_cnt = (sizeof(struct watch_face_theme1_ctl) -
-								sizeof(struct watch_face_header)) /
+			.wfh_element_cnt = (sizeof(struct watch_face_theme1_ctl) - sizeof(struct watch_face_header)) /
 							   sizeof(struct wf_element_style),
 			.wfh_thumb_resource_id = GX_PIXELMAP_ID__,
 		},

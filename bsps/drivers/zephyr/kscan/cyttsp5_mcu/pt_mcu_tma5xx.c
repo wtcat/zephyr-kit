@@ -57,14 +57,7 @@
 #include <sys/atomic.h>
 #include <sys/printk.h>
 
-struct input_evt {
-	struct k_poll_event poll_event;
-	struct k_poll_signal poll_signal;
-	atomic_t event;
-};
 
-#define INPUT_TP_EVENT 0x01
-#define INPUT_KEY_EVENT 0x02
 
 /* comment this macro when finish the debug */
 //#define PRINT_PIP_MSG
@@ -1268,7 +1261,7 @@ static void pt_parse_touch_report(void)
 					PT_DBG("(%d): Down, ID=%d, X=%d, Y=%d\n", i, touch_id, x, y);
 
 				extern struct cyttsp5_data my_cyttsp5_data;
-				if (my_cyttsp5_data.callback != NULL) {
+				if (my_cyttsp5_data.enable) {
 					bool touched = (event_id == 3) ? 0 : 1;
 					my_cyttsp5_data.callback(my_cyttsp5_data.dev, x, y, touched);
 				}
@@ -1878,33 +1871,6 @@ void pt_parse_noise_metric(void)
 	}
 }
 
-static void input_evt_init(struct input_evt *evt)
-{
-	k_poll_signal_init(&evt->poll_signal);
-	k_poll_event_init(&evt->poll_event, K_POLL_TYPE_SIGNAL, K_POLL_MODE_NOTIFY_ONLY, &evt->poll_signal);
-	atomic_set(&evt->event, 0);
-}
-
-static void input_evt_post(struct input_evt *evt, int event)
-{
-	atomic_or(&evt->event, event);
-	k_poll_signal_raise(&evt->poll_signal, 0);
-}
-
-static int input_evt_wait(struct input_evt *evt, uint32_t *event)
-{
-	int ret;
-	__ASSERT(event != NULL, "Invalid input parameters");
-	ret = k_poll(&evt->poll_event, 1, K_FOREVER);
-	if (ret < 0)
-		return ret;
-
-	evt->poll_signal.signaled = 0;
-	evt->poll_signal.result = 0;
-	*event = (uint32_t)atomic_and(&evt->event, 0);
-	return 0;
-}
-
 /* Interrupt handler */
 int pt_parse_cmd_and_interrupt(void)
 {
@@ -1945,11 +1911,13 @@ int pt_poll_noise_metric(void)
 	}
 	return 0;
 }
-struct input_evt input_prv;
+
+
+static K_SEM_DEFINE(touch_sem, 0, 1);
 
 int pt_interrupt(void)
 {
-	input_evt_post(&input_prv, INPUT_TP_EVENT);
+	k_sem_give(&touch_sem);
 	return 0;
 }
 
@@ -1972,34 +1940,22 @@ int pt_parse_interrupt(void)
 	return 0;
 }
 
-#if 0
-static K_KERNEL_STACK_DEFINE(tp_stack, 2048);
+#if 1
+static K_KERNEL_STACK_DEFINE(tp_stack, 1024);
 static struct k_thread tp_thread;
 static void touch_daemon_thread(void *p1, void *p2, void *p3)
 {
 	uint32_t event_out;
 	int ret;
-	extern void *disp_driver_data;
-	GX_EVENT event = {
-		.gx_event_sender = 0,
-		.gx_event_target = 0,
-		.gx_event_display_handle = (ULONG)disp_driver_data,
-	};
-	touch_event_send(&point_prv, &event, GX_TOUCH_STATE_RELEASED);
 
 	for (;;) {
-		ret = input_evt_wait(&input_prv, &event_out);
-		if (ret) {
-			continue;
-		}
-
-		if (!(event_out & INPUT_TP_EVENT))
-			continue;
-
+		k_sem_take(&touch_sem, K_FOREVER);
 		pt_parse_cmd_and_interrupt();
 	}
 }
 #endif
+
+#include "zephyr.h"
 
 /* Example - To perform all the functions */
 void pt_example(void)
@@ -2027,17 +1983,18 @@ void pt_example(void)
 #endif
 
 	cd.debug_level = DEBUG_LEVEL_1;
-#if 1
+#if 0
 	REGISTER_INT_HANDLER(pt_parse_cmd_and_interrupt);
 #else
 	REGISTER_INT_HANDLER(pt_interrupt);
 #endif
 //	REGISTER_60HZ_HANDLER(pt_poll_noise_metric); //no need
-#if 0
-	input_evt_init(&input_prv);
-	k_thread_create(&tp_thread, tp_stack, K_KERNEL_STACK_SIZEOF(tp_stack),
+#if 1
+	k_thread_create(&tp_thread, tp_stack, K_KERNEL_STACK_SIZEOF(tp_stack), 
 					touch_daemon_thread, NULL, NULL, NULL,
-					GX_SYSTEM_THREAD_PRIORITY - 1, 0, K_NO_WAIT);
+					CONFIG_KSCAN_CYTTSP5_THREAD_PRIO, 0, K_NO_WAIT);
+	k_thread_name_set(&tp_thread, "/kscan@touch");
+
 #endif
 	ENABLE_IRQ();
 

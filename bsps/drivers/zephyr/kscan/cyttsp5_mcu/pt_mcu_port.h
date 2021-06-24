@@ -102,5 +102,6 @@ struct i2c_prv {
 struct cyttsp5_data {
 	const struct device *dev;
 	kscan_callback_t callback;
+	bool enable;
 };
 #endif

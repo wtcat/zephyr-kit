@@ -35,7 +35,8 @@ static void ota_request_service(const void *buf, size_t size,
     uint8_t resp[sizeof(struct opc_subhdr) + 10];
     struct opc_subhdr *hdr = (struct opc_subhdr *)resp;
     uint16_t len;
-       
+
+    ARG_UNUSED(size);   
 #ifdef CONFIG_PROTOBUF
     Ota__FileRequest req = OTA__FILE_REQUEST__INIT;
     req.fmax_size = 2048;
@@ -47,7 +48,7 @@ static void ota_request_service(const void *buf, size_t size,
     ack->battery = 100;
 #endif
     hdr->minor = OTA_FILE_REQ;
-    hdr->len = ltons(len);
+    hdr->len = ltons(OPC_DLEN(len)); 
     net_buf_add_mem(obuf, resp, sizeof(resp));
 }
 STP_SERVICE(ota, OPC_CLASS_OTA, OTA_FILE_REQ, ota_request_service);
@@ -60,6 +61,7 @@ static void ota_get_breakpoint_service(const void *buf, size_t size,
     struct opc_subhdr *hdr = (struct opc_subhdr *)resp;
     uint16_t len = 0;
 
+    ARG_UNUSED(size);
     if (ota_file_get_context(&ota_file, &context)) {
 #ifdef CONFIG_PROTOBUF
         Ota__File file = OTA__FILE__INIT;
@@ -78,7 +80,7 @@ static void ota_get_breakpoint_service(const void *buf, size_t size,
         LOG_INF("File transmit context length: %d\n", len);
     }
     hdr->minor = OTA_FILE_BKPT;
-    hdr->len = ltons(len);
+    hdr->len = ltons(OPC_DLEN(len)); 
     net_buf_add_mem(obuf, resp, sizeof(*hdr)+len);
 }
 STP_SERVICE(ota, OPC_CLASS_OTA, OTA_FILE_BKPT, ota_get_breakpoint_service);
@@ -91,17 +93,17 @@ static void ota_data_receive_service(const void *buf, size_t size,
     uint8_t ret;
 
 #ifdef CONFIG_PROTOBUF
-    Ota__File *file = ota__file__unpack(NULL, size, buf);
+    Ota__File *file = ota__file__unpack(NULL, OPC_LEN(size), buf);
     if (file && file->field_case == OTA__FILE__FIELD_DATA)
         ret = ota_file_receive(&ota_file, file, 0);
     else
         ret = 0x10;
     ota__file__free_unpacked(file, NULL);
 #else
-    ret = ota_file_receive(&ota_file, buf, size);
+    ret = ota_file_receive(&ota_file, buf, OPC_LEN(size));
 #endif
     hdr->minor = OTA_FILE_DATA;
-    hdr->len = ltons(1);
+    hdr->len = ltons(OPC_SLEN(1)); 
     hdr->data[0] = ret;
     net_buf_add_mem(obuf, resp, sizeof(resp));
 }
@@ -116,9 +118,9 @@ static void ota_checksum_service(const void *buf, size_t size,
     uint32_t crc;
 
     hdr->minor = OTA_FILE_CMP;
-    hdr->len = ltons(1);  
+    hdr->len = ltons(OPC_SLEN(1));  
 #ifdef CONFIG_PROTOBUF
-    Ota__FileCheck *file_chk = ota__file_check__unpack(NULL, size, buf);
+    Ota__FileCheck *file_chk = ota__file_check__unpack(NULL, OPC_LEN(size), buf);
     if (!file_chk) {
         hdr->data[0] = 0x02;
         goto _exit;
@@ -127,7 +129,7 @@ static void ota_checksum_service(const void *buf, size_t size,
     file_crc = file_chk->crc;
     ota__file_check__free_unpacked(file_chk, NULL);
 #else
-    if (size != sizeof(uint32_t)) {
+    if (OPC_LEN(size) != sizeof(uint32_t)) {
         hdr->data[0] = 0x01;
         goto _exit;
     }

@@ -550,7 +550,7 @@ static const struct mspi_nor_config nor_config = {
     .start = 0,
     .size = FLASH_SIZE
 };
-DEVICE_DT_DEFINE(DT_DRV_INST(0), mspi_nor_init, &device_pm_control_nop,
+DEVICE_DT_DEFINE(DT_DRV_INST(0), mspi_nor_init, NULL,
 		 &nor_data, &nor_config,
 		 POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,
 		 &qspi_nor_api);

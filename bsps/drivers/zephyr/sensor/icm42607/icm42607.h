@@ -21,11 +21,26 @@
 typedef void (*tap_fetch_t)(const struct device *dev);
 int icm42607_tap_fetch(const struct device *dev);
 
+#define MAX_ACC_FIFO_SIZE 50
+
+typedef struct {
+	int16_t accel_x;
+	int16_t accel_y;
+	int16_t accel_z;
+}ACC_DATA_T;
+
+typedef struct{
+	uint16_t readP;
+	uint16_t writeP;
+	ACC_DATA_T array[MAX_ACC_FIFO_SIZE];
+	uint16_t count;
+}ACC_FIFO_T;
+
 struct icm42607_data {
 	const struct device *spi;
 
 	uint8_t fifo_data[HARDWARE_FIFO_SIZE];
-
+	ACC_FIFO_T acc_fifo;
 	int16_t accel_x;
 	int16_t accel_y;
 	int16_t accel_z;

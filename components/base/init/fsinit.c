@@ -8,7 +8,7 @@
 #ifdef CONFIG_FILE_SYSTEM_LITTLEFS
 #include <fs/littlefs.h>
 
-#define LITTLE_FS_DEV (void *)FLASH_AREA_ID(storage)
+#define LITTLE_FS_DEV (void *)FLASH_AREA_ID(fs)
 FS_LITTLEFS_DECLARE_DEFAULT_CONFIG(liitefs_storage);
 #endif
 
@@ -18,14 +18,15 @@ static struct fs_mount_t fsmount_table[] = {
         .type = FS_LITTLEFS,
         .fs_data = &liitefs_storage,
         .storage_dev = (void *)LITTLE_FS_DEV,
-        .mnt_point = "/"
+        .mnt_point = "/home"
     },
 #endif
 };
 
-static int fs_init(const struct device *dev)
+static int base_fs_init(const struct device *dev)
 {
     int ret = 0;
+    
     ARG_UNUSED(dev);
     for (int i = 0; i < ARRAY_SIZE(fsmount_table); i++) {
         struct fs_mount_t *mp = &fsmount_table[i];
@@ -39,4 +40,5 @@ static int fs_init(const struct device *dev)
     return ret;
 }
 
-SYS_INIT(fs_init, APPLICATION, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);
+SYS_INIT(base_fs_init, 
+    APPLICATION, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);

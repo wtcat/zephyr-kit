@@ -1,0 +1,58 @@
+# The west manifest file for upstream Zephyr.
+#
+# The per-installation west configuration file, .west/config, sets the
+# path to the project containing this file in the [manifest] section's
+# "path" variable.
+#
+# You are free to create your own manifest files and put them in any
+# repository you want, to create your own custom Zephyr installations.
+# For example, you could create a manifest file in your own out of
+# tree application directory, which would pull this zephyr repository
+# in as an ordinary project.
+#
+# You can pass your manifest repositories to west init when creating a
+# new Zephyr installation. See the west documentation for more
+# information.
+
+manifest:
+  defaults:
+    remote: upstream
+
+  remotes:
+    - name: upstream
+      url-base: https://github.com/zephyrproject-rtos
+
+  #
+  # Please add items below based on alphabetical order
+  projects:
+    - name: fatfs
+      revision: 1d1fcc725aa1cb3c32f366e0c53d7490d0fe1109
+      path: modules/fs/fatfs
+    - name: lvgl
+      revision: 31acbaa36e9e74ab88ac81e3d21e7f1d00a71136
+      path: modules/lib/gui/lvgl
+    - name: mbedtls
+      revision: 24d84ecff195fb15c889d9046e44e4804d626c67
+      path: modules/crypto/mbedtls
+    - name: mcuboot
+      revision: 3fc59410b633a6d83bbb534e43aac43160f9bd32
+      path: bootloader/mcuboot
+    - name: net-tools
+      revision: 41132e9220f8bc1223084975350c5e5f3b492afe
+      path: tools/net-tools
+    - name: loramac-node
+      revision: 3f545d76a2e6d1db83a470ccdb5bebd1f484e137
+      path: modules/lib/loramac-node
+    - name: segger
+      revision: 38c79a447e4a47d413b4e8d34448316a5cece77c
+      path: modules/debug/segger
+    - name: tinycrypt
+      path: modules/crypto/tinycrypt
+      revision: 3e9a49d2672ec01435ffbf0d788db6d95ef28de0
+    - name: littlefs
+      path: modules/fs/littlefs
+      revision: 9e4498d1c73009acd84bb36036ee5e2869112a6c
+
+  self:
+    path: zephyr
+    west-commands: scripts/west-commands.yml

@@ -3,7 +3,7 @@
  *
  * SPDX-License-Identifier: Apache-2.0
  */
- 
+
 /dts-v1/;
 #include <ambiq/apollo3p.dtsi>
 #include <ambiq/timer_clock.h>
@@ -13,7 +13,7 @@
 / {
 	model = "AmbiqMicro apollo3p board";
 	compatible = "ambiq,apollo3p";
-	
+
 	chosen {
 		zephyr,console = &uart0;
 		zephyr,shell-uart = &uart0;
@@ -24,13 +24,13 @@
 		zephyr,code-partition = &slot0_partition;
 		psram = &psram0;
 	};
-	
+
 	psram0: memory@55000000 {
 		compatible = "aps1604,psram";
 		label = "psram";
 		reg = <0x56000000 DT_SIZE_K(2048)>;
 	};
-	
+
 	power-states {
 		normal_sleep: state0 {
 			compatible = "zephyr,power-state";
@@ -38,7 +38,7 @@
 			substate-id = <0>;
 			min-residency-us = <500>;
 		};
-		
+
 		deep_sleep: state1 {
 			compatible = "zephyr,power-state";
 			power-state-name = "suspend-to-idle";
@@ -46,7 +46,7 @@
 			min-residency-us = <2000>;
 		};
 	};
-	
+
 	soc {
 		flash-controller@40018000 {
 			flash0: flash@00000000 {
@@ -63,40 +63,41 @@
 		  #address-cells = <1>;
 		  #size-cells = <1>;
 
-		  update_partition: partition@0 {
-			  label = "update-img";
-			  reg = <0x0 DT_SIZE_K(2048)>;
+		  resource_partition: partition@0 {
+			  label = "resource_img";
+			  reg = <0x0 DT_SIZE_K(8*1024)>;
 		  };
-
-		  watch_face_theme1_partition: partition@200000 {
-			  label = "watch-face-1";
-			  reg = <0x200000 DT_SIZE_K(2048)>;
-		  };
-		  watch_face_theme2_partition: partition@400000 {
-			  label = "watch-face-2";
-			  reg = <0x400000 DT_SIZE_K(2048)>;
-		  };
-		  watch_face_theme3_partition: partition@600000 {
-			  label = "watch-face-3";
-			  reg = <0x600000 DT_SIZE_K(2048)>;
-		  };
-		  watch_face_theme4_partition: partition@800000 {
-			  label = "watch-face-4";
+		  watch_face_theme1_partition: partition@800000 {
+			  label = "watch_face_1";
 			  reg = <0x800000 DT_SIZE_K(2048)>;
 		  };
-		  watch_face_theme5_partition: partition@A00000 {
-			  label = "watch-face-5";
+		  watch_face_theme2_partition: partition@A00000 {
+			  label = "watch_face_2";
 			  reg = <0xA00000 DT_SIZE_K(2048)>;
 		  };
-
-		  storage_partition: partition@C00000 {
-			  label = "storage";
+		  watch_face_theme3_partition: partition@C00000 {
+			  label = "watch_face_3";
 			  reg = <0xC00000 DT_SIZE_K(2048)>;
 		  };
-
-		  user_partition: partition@E00000 {
-			  label = "user-date";
-			  reg = <0xE00000 DT_SIZE_K(50*1024)>;
+		  watch_face_theme4_partition: partition@E00000 {
+			  label = "watch_face_4";
+			  reg = <0xE00000 DT_SIZE_K(2048)>;
+		  };
+		  watch_face_theme5_partition: partition@1000000 {
+			  label = "watch_face_5";
+			  reg = <0x1000000 DT_SIZE_K(2048)>;
+		  };
+		  storage_partition: partition@1200000 {
+			  label = "storage";
+			  reg = <0x1200000 DT_SIZE_K(2048)>;
+		  };
+		  update_partition: partition@1400000 {
+			  label = "update_img";
+			  reg = <0x1400000 DT_SIZE_K(2048)>;
+		  };
+		  file_system: partition@1600000 {
+			  label = "fs";
+			  reg = <0x1600000 DT_SIZE_K(10*1024)>;
 		  };
 	  };
   };
@@ -106,7 +107,7 @@
 		io-channels = <&adc1 16>;
 		io-channel-names = "ADCSE0";
 		status = "disabled";
-		label = "channel";		   
+		label = "channel";
 	};
 
 	pwmmotor {
@@ -240,12 +241,12 @@
 	status = "okay";
 	cs-gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
 	icm42607@0 {
-	  compatible = "invensense,icm42607";	
+	  compatible = "invensense,icm42607";
 	  int-gpios = <&gpio0 17 GPIO_ACTIVE_LOW>;
 	  label = "ICM42607";
-	  reg = <0>;	
+	  reg = <0>;
 	  spi-max-frequency = <10000000>;
-	  
+
 	  /* irq-gp.ios = <&gpio 0 0>; */
 	  /* disconnect-sdo-sa0-pull-up; */
   };

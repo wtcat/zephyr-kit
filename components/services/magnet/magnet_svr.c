@@ -181,7 +181,7 @@ static void magnet_daemon(struct magnet_service *msvr)
 
     reset = 1;
     msvr->m_axis = ms_axis;
-    k_thread_name_set(k_current_get(), "Magnet-Daemon");
+    k_thread_name_set(k_current_get(), "/service@magnet");
     magnet_init_parameters(mag_sp, pa, pb, pc);
     AlgoInitial(mag_sp, pa, pb, pc);
 

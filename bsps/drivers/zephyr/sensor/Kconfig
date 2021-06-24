@@ -14,7 +14,8 @@ comment "Device Drivers"
 
 rsource "mmc5603/Kconfig"
 rsource "icm42607/Kconfig"
-rsource "pah8112/Kconfig"
+#rsource "pah8112/Kconfig"
 rsource "cw6305/Kconfig"
+rsource "gh3011/Kconfig"
 
 endif # SENSOR

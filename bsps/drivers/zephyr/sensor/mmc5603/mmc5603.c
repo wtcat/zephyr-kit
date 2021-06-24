@@ -1,17 +1,37 @@
-#include <drivers/sensor.h>
-#include <kernel.h>
-#include <device.h>
-#include <init.h>
 #include <string.h>
 #include <sys/byteorder.h>
 #include <sys/__assert.h>
+
+#include <version.h>
+#include <kernel.h>
+#include <device.h>
+#include <init.h>
 #include <logging/log.h>
 #include <soc.h>
 
+#include <drivers/sensor.h>
 #include "drivers_ext/sensor_priv.h"
 #include "mmc5603.h"
 
 LOG_MODULE_REGISTER(MMC5603, CONFIG_SENSOR_LOG_LEVEL);
+
+
+#if (KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(2,6,0))
+#include <pm/device_runtime.h>
+#define _device_pm_get(_dev) pm_device_get(_dev)
+#define _device_pm_put(_dev) pm_device_put(_dev)
+#define device_pm_enable(_dev) pm_device_enable(_dev)
+#define device_pm_cb pm_device_cb
+
+#define DEVICE_PM_SET_POWER_STATE  PM_DEVICE_STATE_SET
+#define DEVICE_PM_GET_POWER_STATE  PM_DEVICE_STATE_GET
+#define DEVICE_PM_ACTIVE_STATE     PM_DEVICE_STATE_ACTIVE
+#define DEVICE_PM_LOW_POWER_STATE  PM_DEVICE_STATE_LOW_POWER
+#define DEVICE_PM_SUSPEND_STATE    PM_DEVICE_STATE_SUSPEND
+#else
+#define _device_pm_get(_dev) device_pm_get_sync(_dev)
+#define _device_pm_put(_dev) device_pm_put(_dev)
+#endif
 
 #define DT_DRV_COMPAT memsic_mmc5603
 
@@ -97,7 +117,7 @@ static inline int mmc5603_soft_reset(struct mmc5603_data *priv)
 {
     if (mmc5603_write_reg(priv, MMC5603_ICTRL1, 0x80))
         return -EIO;
-    k_busy_wait(25000);
+    k_msleep(30);
     return 0;
 }
 
@@ -205,26 +225,41 @@ static int mmc5603_disable_measure(struct mmc5603_data *priv)
     return mmc5603_write_reg(priv, MMC5603_ICTRL0, ICTRL0_DO_RESET);
 }
 
-static int mmc5603_mode_config(struct mmc5603_data *priv,
-    enum sensor_attribute attr, const struct sensor_value *val)       
+static int mmc5603_mode_config(const struct device *dev, 
+                               struct mmc5603_data *priv,
+                               enum sensor_attribute attr, 
+                               const struct sensor_value *val)       
 {
+    int ret = 0;
+
 	switch ((int)attr) {
 	case SENSOR_ATTR_FULL_SCALE:
 		priv->sensitivity = val->val1;
         break;
 	case SENSOR_ATTR_SAMPLING_FREQUENCY:
-        return mmc5603_set_odr(priv, (uint16_t)val->val1, true);
+        priv->odr = (uint16_t)val->val1;
+        break;
     case SENSOR_ATTR_START:
         if (priv->odr == 0)
             return -EINVAL;
-        return mmc5603_enable_measure(priv, true);
+#ifdef CONFIG_PM_DEVICE
+        _device_pm_get(dev);
+#endif
+        ret = mmc5603_set_odr(priv, priv->odr, true);
+        if (!ret)
+            ret = mmc5603_enable_measure(priv, true);
+        break;
     case SENSOR_ATTR_STOP:
-        return mmc5603_disable_measure(priv);
+        ret = mmc5603_disable_measure(priv);
+#ifdef CONFIG_PM_DEVICE
+        ret |= _device_pm_put(dev);
+#endif
+        break;
 	default:
 		LOG_DBG("Attribute not supported.");
 		return -ENOTSUP;
 	}
-	return 0;
+	return ret;
 }
 
 static int mmc5603_attr_set(const struct device *dev,
@@ -235,7 +270,7 @@ static int mmc5603_attr_set(const struct device *dev,
     struct mmc5603_data *priv = dev->data;
 	switch (chan) {
 	case SENSOR_CHAN_MAGN_XYZ:
-		return mmc5603_mode_config(priv, attr, val);
+		return mmc5603_mode_config(dev, priv, attr, val);
 	default:
 		LOG_WRN("attr_set() not supported on this channel.");
 		return -ENOTSUP;
@@ -288,12 +323,10 @@ static int mmc5603_sample_fetch_xyz(const struct device *dev)
     mmc5603_read_reg(priv, MMC5603_STATUS1, &status);
     if (!(status & STA_MEAS_M_DONE))
         return -EBUSY;
-
     if (mmc5603_read_data(priv, 0, buf, sizeof(buf))) {
         LOG_WRN("failed to read sample");
         return -EIO;
     }
-
     priv->sample_x = ((uint32_t)buf[0] << 12) | ((uint32_t)buf[1] << 4) | (buf[6] >> 4);
     priv->sample_y = ((uint32_t)buf[2] << 12) | ((uint32_t)buf[3] << 4) | (buf[7] >> 4);
     priv->sample_z = ((uint32_t)buf[4] << 12) | ((uint32_t)buf[5] << 4) | (buf[8] >> 4);
@@ -386,6 +419,58 @@ static bool mmc5603_selftest_run(struct mmc5603_data *priv)
     return true;
 }
 
+#ifdef CONFIG_PM_DEVICE
+static int mmc5603_pm_set(struct mmc5603_data *priv, uint32_t state)
+{
+    int ret = 0;
+
+    switch (state) {
+    case DEVICE_PM_ACTIVE_STATE:
+        priv->power_state = state;
+        break;
+    case DEVICE_PM_LOW_POWER_STATE:
+        break;
+    case DEVICE_PM_SUSPEND_STATE:
+        ret = mmc5603_soft_reset(priv);
+        if (!ret)
+            priv->power_state = state;
+        break;
+    }
+    return ret;
+}
+
+#if (KERNEL_VERSION_NUMBER < ZEPHYR_VERSION(2,6,0))
+static int mmc5603_pm_control(const struct device *dev, uint32_t command, 
+    void *context, device_pm_cb cb, void *arg) 
+#else
+static int mmc5603_pm_control(const struct device *dev, uint32_t command, 
+    uint32_t *context, device_pm_cb cb, void *arg) 
+#endif
+{
+    struct mmc5603_data *priv = dev->data;
+    uint32_t *state = context;
+    int ret;
+
+    switch (command) {
+    case DEVICE_PM_SET_POWER_STATE:
+        ret = mmc5603_pm_set(priv, *state);
+        break;
+    case DEVICE_PM_GET_POWER_STATE:
+        *state = priv->power_state;
+        ret = 0;
+        break;
+    default:
+        ret = -EINVAL;
+        break;
+    }
+    if (cb != NULL)
+        cb(dev, ret, context, arg);
+    return ret;
+}
+#else
+#define mmc5603_pm_control NULL
+#endif
+
 static int mmc5603_init(const struct device *dev)
 {
     const struct mmc5603_config *cfg = dev->config;
@@ -438,6 +523,11 @@ static int mmc5603_init(const struct device *dev)
         LOG_ERR("%s(): Selftest failed\n", __func__);
         ret = -EIO;
     }
+#ifdef CONFIG_PM_DEVICE
+    ret = mmc5603_soft_reset(priv);
+    if (!ret)
+        device_pm_enable(dev);
+#endif
 _out:
     return ret;
 }
@@ -454,7 +544,7 @@ _out:
     }; \
     DEVICE_DT_DEFINE(DT_DRV_INST(nid),   \
         mmc5603_init,              \
-        device_pm_control_nop,          \
+        mmc5603_pm_control,          \
         &mmc5603_private##nid,                   \
         &mmc5603_config##nid,           \
         POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEVICE,  \

@@ -27,6 +27,11 @@ struct opc_hdr {
 struct opc_subhdr {
     uint8_t minor;
     uint16_t len;
+#define OPC_LEN(len) ((len) & OPC_LENMASK)
+#define OPC_LENMASK  0x0FFF
+#define OPC_SCODE    0x1000
+#define OPC_SLEN(len) (OPC_LEN(len) | OPC_SCODE) /* Status code with lenght */
+#define OPC_DLEN(len) ((uint16_t)(len)) /* */
     uint8_t data[];
 }__packed;
 
@@ -111,7 +116,7 @@ static inline void opc_bufv_init(struct stp_bufv *bv,
     struct opc_subhdr *hdr, int minor, size_t size)
 {
     hdr->minor = (uint8_t)minor;
-    hdr->len = ltons((uint16_t)size);
+    hdr->len = ltons(OPC_DLEN(size));
     bv->buf = hdr;
     bv->len = sizeof(struct opc_subhdr) + size;    
 }

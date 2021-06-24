@@ -35,21 +35,21 @@ static void camera_open_notify(const void *buf, size_t size,
     struct net_buf *obuf)
 {
     ARG_UNUSED(obuf);
-    camera_service(buf, size, CAMERA_REQ_OPEN, __func__);
+    camera_service(buf, OPC_LEN(size), CAMERA_REQ_OPEN, __func__);
 }
 
 static void camera_shot_notify(const void *buf, size_t size,
     struct net_buf *obuf)
 {
     ARG_UNUSED(obuf);
-    camera_service(buf, size, CAMERA_REQ_SHOT, __func__);
+    camera_service(buf, OPC_LEN(size), CAMERA_REQ_SHOT, __func__);
 }
 
 static void camera_close_notify(const void *buf, size_t size,
     struct net_buf *obuf)
 {
     ARG_UNUSED(obuf);
-    camera_service(buf, size, CAMERA_REQ_CLOSE, __func__);
+    camera_service(buf, OPC_LEN(size), CAMERA_REQ_CLOSE, __func__);
 }
 
 STP_SERVICE(camera, OPC_CLASS_CAMERA, CAMERA_REQ_OPEN, camera_open_notify);

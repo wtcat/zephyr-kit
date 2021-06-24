@@ -9,7 +9,6 @@
 /*                                                                        */
 /**************************************************************************/
 
-
 /**************************************************************************/
 /**************************************************************************/
 /**                                                                       */
@@ -21,20 +20,18 @@
 
 #define GX_SOURCE_CODE
 
-
 /* Include necessary system files.  */
 
 #include "gx_api.h"
 #include "gx_system.h"
 #include "gx_context.h"
 
-
 /**************************************************************************/
 /*                                                                        */
 /*  FUNCTION                                               RELEASE        */
 /*                                                                        */
 /*    _gx_context_line_color_set                          PORTABLE C      */
-/*                                                           6.0          */
+/*                                                           6.1          */
 /*  AUTHOR                                                                */
 /*                                                                        */
 /*    Kenneth Maxwell, Microsoft Corporation                              */
@@ -69,24 +66,23 @@
 /*    DATE              NAME                      DESCRIPTION             */
 /*                                                                        */
 /*  05-19-2020     Kenneth Maxwell          Initial Version 6.0           */
+/*  09-30-2020     Kenneth Maxwell          Modified comment(s),          */
+/*                                            resulting in version 6.1    */
 /*                                                                        */
 /**************************************************************************/
 UINT _gx_context_line_color_set(GX_RESOURCE_ID line_color_id)
 {
-UINT             status;
-GX_COLOR         linecolor;
-GX_DRAW_CONTEXT *context;
+	UINT status;
+	GX_COLOR linecolor;
+	GX_DRAW_CONTEXT *context;
 
+	/* Get the line color for the current context. */
+	status = _gx_context_color_get(line_color_id, &linecolor);
+	context = _gx_system_current_draw_context;
 
-    /* Get the line color for the current context. */
-    status = _gx_context_color_get(line_color_id, &linecolor);
+	/* Set the brush.  */
+	context->gx_draw_context_brush.gx_brush_line_color = linecolor;
 
-    context = _gx_system_current_draw_context;
-
-    /* Set the brush.  */
-    context -> gx_draw_context_brush.gx_brush_line_color = linecolor;
-
-    /* Return successful completion.  */
-    return(status);
+	/* Return successful completion.  */
+	return (status);
 }
-

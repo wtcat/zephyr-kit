@@ -35,7 +35,7 @@ static GX_UBYTE mouse_capture_memory[GX_MOUSE_MAX_RESOLUTION * GX_MOUSE_MAX_RESO
 /*  FUNCTION                                               RELEASE        */
 /*                                                                        */
 /*    _gx_display_driver_4bpp_grayscale_setup             PORTABLE C      */
-/*                                                           6.0          */
+/*                                                           6.1.3        */
 /*  AUTHOR                                                                */
 /*                                                                        */
 /*    Kenneth Maxwell, Microsoft Corporation                              */
@@ -68,6 +68,12 @@ static GX_UBYTE mouse_capture_memory[GX_MOUSE_MAX_RESOLUTION * GX_MOUSE_MAX_RESO
 /*    DATE              NAME                      DESCRIPTION             */
 /*                                                                        */
 /*  05-19-2020     Kenneth Maxwell          Initial Version 6.0           */
+/*  09-30-2020     Kenneth Maxwell          Modified comment(s),          */
+/*                                            resulting in version 6.1    */
+/*  12-31-2020     Kenneth Maxwell          Modified comment(s),          */
+/*                                            added rotation angle        */
+/*                                            initialization,             */
+/*                                            resulting in version 6.1.3  */
 /*                                                                        */
 /**************************************************************************/
 VOID _gx_display_driver_4bpp_grayscale_setup(GX_DISPLAY *display, VOID *aux_data,
@@ -104,6 +110,7 @@ VOID _gx_display_driver_4bpp_grayscale_setup(GX_DISPLAY *display, VOID *aux_data
     display -> gx_display_mouse_define                         = _gx_display_driver_generic_mouse_define;
 #endif
 
+    display -> gx_display_rotation_angle                       = 0;
     display -> gx_display_driver_data                          = (VOID *)aux_data;
     display -> gx_display_accelerator                          = GX_NULL;
     display -> gx_display_layer_services                       = GX_NULL;

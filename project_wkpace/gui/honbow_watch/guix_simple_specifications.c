@@ -5,8 +5,8 @@
 /*  specification file(s). For more information please refer to the Azure RTOS */
 /*  GUIX Studio User Guide, or visit our web site at azure.com/rtos            */
 /*                                                                             */
-/*  GUIX Studio Revision 6.1.5.0                                               */
-/*  Date (dd.mm.yyyy): 24. 3.2021   Time (hh:mm): 17:26                        */
+/*  GUIX Studio Revision 6.1.7.0                                               */
+/*  Date (dd.mm.yyyy): 18. 6.2021   Time (hh:mm): 10:05                        */
 /*******************************************************************************/
 
 
@@ -16,39 +16,49 @@
 #include "guix_simple_specifications.h"
 
 static GX_WIDGET *gx_studio_nested_widget_create(GX_BYTE *control, GX_CONST GX_STUDIO_WIDGET *definition, GX_WIDGET *parent);
-APP_COMPASS_WINDOW_CONTROL_BLOCK app_compass_window;
-WF_LIST_CONTROL_BLOCK wf_list;
-BT_PAIR_WINDOW_CONTROL_BLOCK bt_pair_window;
-LANGUAGE_SEL_WINDOW_CONTROL_BLOCK language_sel_window;
-NOTIFY_CENTER_WINDOW_CONTROL_BLOCK notify_center_window;
-CONTROL_CENTER_WINDOW_CONTROL_BLOCK control_center_window;
-APP_LIST_WINDOW_CONTROL_BLOCK app_list_window;
+APP_STOP_WATCH_WINDOW_CONTROL_BLOCK app_stop_watch_window;
+APP_TIMER_WINDOW_CONTROL_BLOCK app_timer_window;
+APP_BREATH_WINDOW_CONTROL_BLOCK app_breath_window;
+APP_SPO2_WINDOW_CONTROL_BLOCK app_spo2_window;
+APP_HEART_WINDOW_CONTROL_BLOCK app_heart_window;
+LANGUAGE_WINDOW_CONTROL_BLOCK language_window;
+MESSAGE_WINDOW_CONTROL_BLOCK message_window;
+PAIRING_WINDOW_CONTROL_BLOCK pairing_window;
 ROOT_WINDOW_CONTROL_BLOCK root_window;
+APP_MUSIC_WINDOW_CONTROL_BLOCK app_music_window;
+APP_REMINDERS_WINDOW_CONTROL_BLOCK app_reminders_window;
+APP_ALARM_WINDOW_CONTROL_BLOCK app_alarm_window;
+APP_TODAY_WINDOW_CONTROL_BLOCK app_today_window;
+APP_SPORT_WINDOW_CONTROL_BLOCK app_sport_window;
+WF_LIST_CONTROL_BLOCK wf_list;
+CONTROL_CENTER_WINDOW_CONTROL_BLOCK control_center_window;
+APP_SETTING_WINDOW_CONTROL_BLOCK app_setting_window;
+APP_LIST_WINDOW_CONTROL_BLOCK app_list_window;
+APP_COMPASS_WINDOW_CONTROL_BLOCK app_compass_window;
 GX_DISPLAY honbow_disp_control_block;
 GX_WINDOW_ROOT honbow_disp_root_window;
 GX_CANVAS  honbow_disp_canvas_control_block;
 ULONG      honbow_disp_canvas_memory[57600];
 
-extern GX_CONST GX_THEME *honbow_disp_theme_table[];
-extern GX_CONST GX_STRING *honbow_disp_language_table[];
 
 GX_STUDIO_DISPLAY_INFO guix_simple_display_table[1] =
 {
     {
     "honbow_disp",
     "honbow_disp_canvas",
-    honbow_disp_theme_table,
-    honbow_disp_language_table,
-    HONBOW_DISP_THEME_TABLE_SIZE,
-    HONBOW_DISP_LANGUAGE_TABLE_SIZE,
-    HONBOW_DISP_STRING_TABLE_SIZE,
+    GX_NULL,
+    GX_NULL,
+    0,
+    0,
+    0,
     320,                                     /* x resolution                   */
     360,                                     /* y resolution                   */
     &honbow_disp_control_block,
     &honbow_disp_canvas_control_block,
     &honbow_disp_root_window,
     honbow_disp_canvas_memory,               /* canvas memory area             */
-    230400                                   /* canvas memory size in bytes    */
+    230400,                                  /* canvas memory size in bytes    */
+    0                                        /* rotation angle                 */
     }
 };
 
@@ -85,14 +95,14 @@ UINT gx_studio_horizontal_list_create(GX_CONST GX_STUDIO_WIDGET *info, GX_WIDGET
     }
     return status;
 }
-GX_WINDOW_PROPERTIES app_compass_window_properties =
+GX_WINDOW_PROPERTIES app_stop_watch_window_properties =
 {
     0                                        /* wallpaper pixelmap id          */
 };
 
-GX_CONST GX_STUDIO_WIDGET app_compass_window_define =
+GX_CONST GX_STUDIO_WIDGET app_stop_watch_window_define =
 {
-    "app_compass_window",
+    "app_stop_watch_window",
     GX_TYPE_WINDOW,                          /* widget type                    */
     GX_ID_NONE,                              /* widget id                      */
     #if defined(GX_WIDGET_USER_DATA)
@@ -100,10 +110,10 @@ GX_CONST GX_STUDIO_WIDGET app_compass_window_define =
     #endif
     GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
     GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
-    sizeof(APP_COMPASS_WINDOW_CONTROL_BLOCK), /* control block size            */
-    GX_COLOR_ID_BLACK,                       /* normal color id                */
-    GX_COLOR_ID_BLACK,                       /* selected color id              */
-    GX_COLOR_ID_BLACK,                       /* disabled color id              */
+    sizeof(APP_STOP_WATCH_WINDOW_CONTROL_BLOCK), /* control block size         */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
     gx_studio_window_create,                 /* create function                */
     GX_NULL,                                 /* drawing function override      */
     GX_NULL,                                 /* event function override        */
@@ -111,46 +121,16 @@ GX_CONST GX_STUDIO_WIDGET app_compass_window_define =
     GX_NULL,                                 /* next widget                    */
     GX_NULL,                                 /* child widget                   */
     0,                                       /* control block                  */
-    (void *) &app_compass_window_properties  /* extended properties            */
+    (void *) &app_stop_watch_window_properties /* extended properties          */
 };
-GX_HORIZONTAL_LIST_PROPERTIES wf_list_properties =
-{
-    0,                                       /* wallpaper id                   */
-    wf_list_callback,                        /* callback function              */
-    10                                       /* total columns                  */
-};
-
-GX_CONST GX_STUDIO_WIDGET wf_list_define =
-{
-    "wf_list",
-    GX_TYPE_HORIZONTAL_LIST,                 /* widget type                    */
-    GX_ID_NONE,                              /* widget id                      */
-    #if defined(GX_WIDGET_USER_DATA)
-    0,                                       /* user data                      */
-    #endif
-    GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
-    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
-    sizeof(WF_LIST_CONTROL_BLOCK),           /* control block size             */
-    GX_COLOR_ID_BLACK,                       /* normal color id                */
-    GX_COLOR_ID_BLACK,                       /* selected color id              */
-    GX_COLOR_ID_BLACK,                       /* disabled color id              */
-    gx_studio_horizontal_list_create,        /* create function                */
-    GX_NULL,                                 /* drawing function override      */
-    (UINT (*)(GX_WIDGET *, GX_EVENT *)) wf_list_event, /* event function override */
-    {0, 0, 319, 359},                        /* widget size                    */
-    GX_NULL,                                 /* next widget                    */
-    GX_NULL,                                 /* child widget                   */
-    0,                                       /* control block                  */
-    (void *) &wf_list_properties             /* extended properties            */
-};
-GX_WINDOW_PROPERTIES bt_pair_window_properties =
+GX_WINDOW_PROPERTIES app_timer_window_properties =
 {
     0                                        /* wallpaper pixelmap id          */
 };
 
-GX_CONST GX_STUDIO_WIDGET bt_pair_window_define =
+GX_CONST GX_STUDIO_WIDGET app_timer_window_define =
 {
-    "bt_pair_window",
+    "app_timer_window",
     GX_TYPE_WINDOW,                          /* widget type                    */
     GX_ID_NONE,                              /* widget id                      */
     #if defined(GX_WIDGET_USER_DATA)
@@ -158,10 +138,10 @@ GX_CONST GX_STUDIO_WIDGET bt_pair_window_define =
     #endif
     GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
     GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
-    sizeof(BT_PAIR_WINDOW_CONTROL_BLOCK),    /* control block size             */
-    GX_COLOR_ID_WINDOW_FILL,                 /* normal color id                */
-    GX_COLOR_ID_WINDOW_FILL,                 /* selected color id              */
-    GX_COLOR_ID_DISABLED_FILL,               /* disabled color id              */
+    sizeof(APP_TIMER_WINDOW_CONTROL_BLOCK),  /* control block size             */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
     gx_studio_window_create,                 /* create function                */
     GX_NULL,                                 /* drawing function override      */
     GX_NULL,                                 /* event function override        */
@@ -169,44 +149,16 @@ GX_CONST GX_STUDIO_WIDGET bt_pair_window_define =
     GX_NULL,                                 /* next widget                    */
     GX_NULL,                                 /* child widget                   */
     0,                                       /* control block                  */
-    (void *) &bt_pair_window_properties      /* extended properties            */
+    (void *) &app_timer_window_properties    /* extended properties            */
 };
-GX_WINDOW_PROPERTIES language_sel_window_properties =
+GX_WINDOW_PROPERTIES app_breath_window_properties =
 {
     0                                        /* wallpaper pixelmap id          */
 };
 
-GX_CONST GX_STUDIO_WIDGET language_sel_window_define =
+GX_CONST GX_STUDIO_WIDGET app_breath_window_define =
 {
-    "language_sel_window",
-    GX_TYPE_WINDOW,                          /* widget type                    */
-    GX_ID_NONE,                              /* widget id                      */
-    #if defined(GX_WIDGET_USER_DATA)
-    0,                                       /* user data                      */
-    #endif
-    GX_STYLE_BORDER_THIN|GX_STYLE_ENABLED,   /* style flags                    */
-    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
-    sizeof(LANGUAGE_SEL_WINDOW_CONTROL_BLOCK), /* control block size           */
-    GX_COLOR_ID_WINDOW_FILL,                 /* normal color id                */
-    GX_COLOR_ID_WINDOW_FILL,                 /* selected color id              */
-    GX_COLOR_ID_DISABLED_FILL,               /* disabled color id              */
-    gx_studio_window_create,                 /* create function                */
-    GX_NULL,                                 /* drawing function override      */
-    GX_NULL,                                 /* event function override        */
-    {0, 0, 319, 359},                        /* widget size                    */
-    GX_NULL,                                 /* next widget                    */
-    GX_NULL,                                 /* child widget                   */
-    0,                                       /* control block                  */
-    (void *) &language_sel_window_properties /* extended properties            */
-};
-GX_WINDOW_PROPERTIES notify_center_window_properties =
-{
-    0                                        /* wallpaper pixelmap id          */
-};
-
-GX_CONST GX_STUDIO_WIDGET notify_center_window_define =
-{
-    "notify_center_window",
+    "app_breath_window",
     GX_TYPE_WINDOW,                          /* widget type                    */
     GX_ID_NONE,                              /* widget id                      */
     #if defined(GX_WIDGET_USER_DATA)
@@ -214,10 +166,10 @@ GX_CONST GX_STUDIO_WIDGET notify_center_window_define =
     #endif
     GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
     GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
-    sizeof(NOTIFY_CENTER_WINDOW_CONTROL_BLOCK), /* control block size          */
-    GX_COLOR_ID_BLACK,                       /* normal color id                */
-    GX_COLOR_ID_BLACK,                       /* selected color id              */
-    GX_COLOR_ID_BLACK,                       /* disabled color id              */
+    sizeof(APP_BREATH_WINDOW_CONTROL_BLOCK), /* control block size             */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
     gx_studio_window_create,                 /* create function                */
     GX_NULL,                                 /* drawing function override      */
     GX_NULL,                                 /* event function override        */
@@ -225,16 +177,16 @@ GX_CONST GX_STUDIO_WIDGET notify_center_window_define =
     GX_NULL,                                 /* next widget                    */
     GX_NULL,                                 /* child widget                   */
     0,                                       /* control block                  */
-    (void *) &notify_center_window_properties /* extended properties           */
+    (void *) &app_breath_window_properties   /* extended properties            */
 };
-GX_WINDOW_PROPERTIES control_center_window_properties =
+GX_WINDOW_PROPERTIES app_spo2_window_properties =
 {
     0                                        /* wallpaper pixelmap id          */
 };
 
-GX_CONST GX_STUDIO_WIDGET control_center_window_define =
+GX_CONST GX_STUDIO_WIDGET app_spo2_window_define =
 {
-    "control_center_window",
+    "app_spo2_window",
     GX_TYPE_WINDOW,                          /* widget type                    */
     GX_ID_NONE,                              /* widget id                      */
     #if defined(GX_WIDGET_USER_DATA)
@@ -242,38 +194,10 @@ GX_CONST GX_STUDIO_WIDGET control_center_window_define =
     #endif
     GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
     GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
-    sizeof(CONTROL_CENTER_WINDOW_CONTROL_BLOCK), /* control block size         */
-    GX_COLOR_ID_BLACK,                       /* normal color id                */
-    GX_COLOR_ID_BLACK,                       /* selected color id              */
-    GX_COLOR_ID_BLACK,                       /* disabled color id              */
-    gx_studio_window_create,                 /* create function                */
-    GX_NULL,                                 /* drawing function override      */
-    GX_NULL,                                 /* event function override        */
-    {-1, 0, 318, 359},                       /* widget size                    */
-    GX_NULL,                                 /* next widget                    */
-    GX_NULL,                                 /* child widget                   */
-    0,                                       /* control block                  */
-    (void *) &control_center_window_properties /* extended properties          */
-};
-GX_WINDOW_PROPERTIES app_list_window_properties =
-{
-    0                                        /* wallpaper pixelmap id          */
-};
-
-GX_CONST GX_STUDIO_WIDGET app_list_window_define =
-{
-    "app_list_window",
-    GX_TYPE_WINDOW,                          /* widget type                    */
-    GX_ID_NONE,                              /* widget id                      */
-    #if defined(GX_WIDGET_USER_DATA)
-    0,                                       /* user data                      */
-    #endif
-    GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
-    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
-    sizeof(APP_LIST_WINDOW_CONTROL_BLOCK),   /* control block size             */
-    GX_COLOR_ID_BLACK,                       /* normal color id                */
-    GX_COLOR_ID_BLACK,                       /* selected color id              */
-    GX_COLOR_ID_BLACK,                       /* disabled color id              */
+    sizeof(APP_SPO2_WINDOW_CONTROL_BLOCK),   /* control block size             */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
     gx_studio_window_create,                 /* create function                */
     GX_NULL,                                 /* drawing function override      */
     GX_NULL,                                 /* event function override        */
@@ -281,7 +205,119 @@ GX_CONST GX_STUDIO_WIDGET app_list_window_define =
     GX_NULL,                                 /* next widget                    */
     GX_NULL,                                 /* child widget                   */
     0,                                       /* control block                  */
-    (void *) &app_list_window_properties     /* extended properties            */
+    (void *) &app_spo2_window_properties     /* extended properties            */
+};
+GX_WINDOW_PROPERTIES app_heart_window_properties =
+{
+    0                                        /* wallpaper pixelmap id          */
+};
+
+GX_CONST GX_STUDIO_WIDGET app_heart_window_define =
+{
+    "app_heart_window",
+    GX_TYPE_WINDOW,                          /* widget type                    */
+    GX_ID_NONE,                              /* widget id                      */
+    #if defined(GX_WIDGET_USER_DATA)
+    0,                                       /* user data                      */
+    #endif
+    GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
+    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
+    sizeof(APP_HEART_WINDOW_CONTROL_BLOCK),  /* control block size             */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
+    gx_studio_window_create,                 /* create function                */
+    GX_NULL,                                 /* drawing function override      */
+    GX_NULL,                                 /* event function override        */
+    {0, 0, 319, 359},                        /* widget size                    */
+    GX_NULL,                                 /* next widget                    */
+    GX_NULL,                                 /* child widget                   */
+    0,                                       /* control block                  */
+    (void *) &app_heart_window_properties    /* extended properties            */
+};
+GX_WINDOW_PROPERTIES language_window_properties =
+{
+    0                                        /* wallpaper pixelmap id          */
+};
+
+GX_CONST GX_STUDIO_WIDGET language_window_define =
+{
+    "language_window",
+    GX_TYPE_WINDOW,                          /* widget type                    */
+    GX_ID_NONE,                              /* widget id                      */
+    #if defined(GX_WIDGET_USER_DATA)
+    0,                                       /* user data                      */
+    #endif
+    GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
+    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
+    sizeof(LANGUAGE_WINDOW_CONTROL_BLOCK),   /* control block size             */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
+    gx_studio_window_create,                 /* create function                */
+    GX_NULL,                                 /* drawing function override      */
+    GX_NULL,                                 /* event function override        */
+    {0, 0, 319, 359},                        /* widget size                    */
+    GX_NULL,                                 /* next widget                    */
+    GX_NULL,                                 /* child widget                   */
+    0,                                       /* control block                  */
+    (void *) &language_window_properties     /* extended properties            */
+};
+GX_WINDOW_PROPERTIES message_window_properties =
+{
+    0                                        /* wallpaper pixelmap id          */
+};
+
+GX_CONST GX_STUDIO_WIDGET message_window_define =
+{
+    "message_window",
+    GX_TYPE_WINDOW,                          /* widget type                    */
+    GX_ID_NONE,                              /* widget id                      */
+    #if defined(GX_WIDGET_USER_DATA)
+    0,                                       /* user data                      */
+    #endif
+    GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
+    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
+    sizeof(MESSAGE_WINDOW_CONTROL_BLOCK),    /* control block size             */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
+    gx_studio_window_create,                 /* create function                */
+    GX_NULL,                                 /* drawing function override      */
+    GX_NULL,                                 /* event function override        */
+    {0, 0, 319, 359},                        /* widget size                    */
+    GX_NULL,                                 /* next widget                    */
+    GX_NULL,                                 /* child widget                   */
+    0,                                       /* control block                  */
+    (void *) &message_window_properties      /* extended properties            */
+};
+GX_WINDOW_PROPERTIES pairing_window_properties =
+{
+    0                                        /* wallpaper pixelmap id          */
+};
+
+GX_CONST GX_STUDIO_WIDGET pairing_window_define =
+{
+    "pairing_window",
+    GX_TYPE_WINDOW,                          /* widget type                    */
+    GX_ID_NONE,                              /* widget id                      */
+    #if defined(GX_WIDGET_USER_DATA)
+    0,                                       /* user data                      */
+    #endif
+    GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
+    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
+    sizeof(PAIRING_WINDOW_CONTROL_BLOCK),    /* control block size             */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
+    gx_studio_window_create,                 /* create function                */
+    GX_NULL,                                 /* drawing function override      */
+    GX_NULL,                                 /* event function override        */
+    {0, 0, 319, 359},                        /* widget size                    */
+    GX_NULL,                                 /* next widget                    */
+    GX_NULL,                                 /* child widget                   */
+    0,                                       /* control block                  */
+    (void *) &pairing_window_properties      /* extended properties            */
 };
 GX_WINDOW_PROPERTIES root_window_properties =
 {
@@ -307,9 +343,9 @@ GX_CONST GX_STUDIO_WIDGET root_window_wf_window_define =
     GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
     GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
     sizeof(GX_WINDOW),                       /* control block size             */
-    GX_COLOR_ID_BLACK,                       /* normal color id                */
-    GX_COLOR_ID_BLACK,                       /* selected color id              */
-    GX_COLOR_ID_BLACK,                       /* disabled color id              */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
     gx_studio_window_create,                 /* create function                */
     GX_NULL,                                 /* drawing function override      */
     GX_NULL,                                 /* event function override        */
@@ -331,9 +367,9 @@ GX_CONST GX_STUDIO_WIDGET root_window_home_window_define =
     GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
     GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
     sizeof(GX_WINDOW),                       /* control block size             */
-    GX_COLOR_ID_BLACK,                       /* normal color id                */
-    GX_COLOR_ID_BLACK,                       /* selected color id              */
-    GX_COLOR_ID_BLACK,                       /* disabled color id              */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
     gx_studio_window_create,                 /* create function                */
     GX_NULL,                                 /* drawing function override      */
     GX_NULL,                                 /* event function override        */
@@ -355,9 +391,9 @@ GX_CONST GX_STUDIO_WIDGET root_window_define =
     GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
     GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
     sizeof(ROOT_WINDOW_CONTROL_BLOCK),       /* control block size             */
-    GX_COLOR_ID_WINDOW_FILL,                 /* normal color id                */
-    GX_COLOR_ID_WINDOW_FILL,                 /* selected color id              */
-    GX_COLOR_ID_DISABLED_FILL,               /* disabled color id              */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
     gx_studio_window_create,                 /* create function                */
     GX_NULL,                                 /* drawing function override      */
     GX_NULL,                                 /* event function override        */
@@ -367,16 +403,309 @@ GX_CONST GX_STUDIO_WIDGET root_window_define =
     0,                                       /* control block                  */
     (void *) &root_window_properties         /* extended properties            */
 };
+GX_WINDOW_PROPERTIES app_music_window_properties =
+{
+    0                                        /* wallpaper pixelmap id          */
+};
+
+GX_CONST GX_STUDIO_WIDGET app_music_window_define =
+{
+    "app_music_window",
+    GX_TYPE_WINDOW,                          /* widget type                    */
+    GX_ID_NONE,                              /* widget id                      */
+    #if defined(GX_WIDGET_USER_DATA)
+    0,                                       /* user data                      */
+    #endif
+    GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
+    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
+    sizeof(APP_MUSIC_WINDOW_CONTROL_BLOCK),  /* control block size             */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
+    gx_studio_window_create,                 /* create function                */
+    GX_NULL,                                 /* drawing function override      */
+    GX_NULL,                                 /* event function override        */
+    {0, 0, 319, 359},                        /* widget size                    */
+    GX_NULL,                                 /* next widget                    */
+    GX_NULL,                                 /* child widget                   */
+    0,                                       /* control block                  */
+    (void *) &app_music_window_properties    /* extended properties            */
+};
+GX_WINDOW_PROPERTIES app_reminders_window_properties =
+{
+    0                                        /* wallpaper pixelmap id          */
+};
+
+GX_CONST GX_STUDIO_WIDGET app_reminders_window_define =
+{
+    "app_reminders_window",
+    GX_TYPE_WINDOW,                          /* widget type                    */
+    GX_ID_NONE,                              /* widget id                      */
+    #if defined(GX_WIDGET_USER_DATA)
+    0,                                       /* user data                      */
+    #endif
+    GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
+    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
+    sizeof(APP_REMINDERS_WINDOW_CONTROL_BLOCK), /* control block size          */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
+    gx_studio_window_create,                 /* create function                */
+    GX_NULL,                                 /* drawing function override      */
+    GX_NULL,                                 /* event function override        */
+    {0, 0, 319, 359},                        /* widget size                    */
+    GX_NULL,                                 /* next widget                    */
+    GX_NULL,                                 /* child widget                   */
+    0,                                       /* control block                  */
+    (void *) &app_reminders_window_properties /* extended properties           */
+};
+GX_WINDOW_PROPERTIES app_alarm_window_properties =
+{
+    0                                        /* wallpaper pixelmap id          */
+};
+
+GX_CONST GX_STUDIO_WIDGET app_alarm_window_define =
+{
+    "app_alarm_window",
+    GX_TYPE_WINDOW,                          /* widget type                    */
+    GX_ID_NONE,                              /* widget id                      */
+    #if defined(GX_WIDGET_USER_DATA)
+    0,                                       /* user data                      */
+    #endif
+    GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
+    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
+    sizeof(APP_ALARM_WINDOW_CONTROL_BLOCK),  /* control block size             */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
+    gx_studio_window_create,                 /* create function                */
+    GX_NULL,                                 /* drawing function override      */
+    GX_NULL,                                 /* event function override        */
+    {0, 0, 319, 359},                        /* widget size                    */
+    GX_NULL,                                 /* next widget                    */
+    GX_NULL,                                 /* child widget                   */
+    0,                                       /* control block                  */
+    (void *) &app_alarm_window_properties    /* extended properties            */
+};
+GX_WINDOW_PROPERTIES app_today_window_properties =
+{
+    0                                        /* wallpaper pixelmap id          */
+};
+
+GX_CONST GX_STUDIO_WIDGET app_today_window_define =
+{
+    "app_today_window",
+    GX_TYPE_WINDOW,                          /* widget type                    */
+    GX_ID_NONE,                              /* widget id                      */
+    #if defined(GX_WIDGET_USER_DATA)
+    0,                                       /* user data                      */
+    #endif
+    GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
+    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
+    sizeof(APP_TODAY_WINDOW_CONTROL_BLOCK),  /* control block size             */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
+    gx_studio_window_create,                 /* create function                */
+    GX_NULL,                                 /* drawing function override      */
+    GX_NULL,                                 /* event function override        */
+    {0, 0, 319, 359},                        /* widget size                    */
+    GX_NULL,                                 /* next widget                    */
+    GX_NULL,                                 /* child widget                   */
+    0,                                       /* control block                  */
+    (void *) &app_today_window_properties    /* extended properties            */
+};
+GX_WINDOW_PROPERTIES app_sport_window_properties =
+{
+    0                                        /* wallpaper pixelmap id          */
+};
+
+GX_CONST GX_STUDIO_WIDGET app_sport_window_define =
+{
+    "app_sport_window",
+    GX_TYPE_WINDOW,                          /* widget type                    */
+    GX_ID_NONE,                              /* widget id                      */
+    #if defined(GX_WIDGET_USER_DATA)
+    0,                                       /* user data                      */
+    #endif
+    GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
+    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
+    sizeof(APP_SPORT_WINDOW_CONTROL_BLOCK),  /* control block size             */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
+    gx_studio_window_create,                 /* create function                */
+    GX_NULL,                                 /* drawing function override      */
+    GX_NULL,                                 /* event function override        */
+    {0, 0, 319, 359},                        /* widget size                    */
+    GX_NULL,                                 /* next widget                    */
+    GX_NULL,                                 /* child widget                   */
+    0,                                       /* control block                  */
+    (void *) &app_sport_window_properties    /* extended properties            */
+};
+GX_HORIZONTAL_LIST_PROPERTIES wf_list_properties =
+{
+    0,                                       /* wallpaper id                   */
+    wf_list_callback,                        /* callback function              */
+    10                                       /* total columns                  */
+};
+
+GX_CONST GX_STUDIO_WIDGET wf_list_define =
+{
+    "wf_list",
+    GX_TYPE_HORIZONTAL_LIST,                 /* widget type                    */
+    GX_ID_NONE,                              /* widget id                      */
+    #if defined(GX_WIDGET_USER_DATA)
+    0,                                       /* user data                      */
+    #endif
+    GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
+    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
+    sizeof(WF_LIST_CONTROL_BLOCK),           /* control block size             */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
+    gx_studio_horizontal_list_create,        /* create function                */
+    GX_NULL,                                 /* drawing function override      */
+    (UINT (*)(GX_WIDGET *, GX_EVENT *)) wf_list_event, /* event function override */
+    {0, 0, 319, 359},                        /* widget size                    */
+    GX_NULL,                                 /* next widget                    */
+    GX_NULL,                                 /* child widget                   */
+    0,                                       /* control block                  */
+    (void *) &wf_list_properties             /* extended properties            */
+};
+GX_WINDOW_PROPERTIES control_center_window_properties =
+{
+    0                                        /* wallpaper pixelmap id          */
+};
+
+GX_CONST GX_STUDIO_WIDGET control_center_window_define =
+{
+    "control_center_window",
+    GX_TYPE_WINDOW,                          /* widget type                    */
+    GX_ID_NONE,                              /* widget id                      */
+    #if defined(GX_WIDGET_USER_DATA)
+    0,                                       /* user data                      */
+    #endif
+    GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
+    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
+    sizeof(CONTROL_CENTER_WINDOW_CONTROL_BLOCK), /* control block size         */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
+    gx_studio_window_create,                 /* create function                */
+    GX_NULL,                                 /* drawing function override      */
+    GX_NULL,                                 /* event function override        */
+    {0, 0, 319, 359},                        /* widget size                    */
+    GX_NULL,                                 /* next widget                    */
+    GX_NULL,                                 /* child widget                   */
+    0,                                       /* control block                  */
+    (void *) &control_center_window_properties /* extended properties          */
+};
+GX_WINDOW_PROPERTIES app_setting_window_properties =
+{
+    0                                        /* wallpaper pixelmap id          */
+};
+
+GX_CONST GX_STUDIO_WIDGET app_setting_window_define =
+{
+    "app_setting_window",
+    GX_TYPE_WINDOW,                          /* widget type                    */
+    GX_ID_NONE,                              /* widget id                      */
+    #if defined(GX_WIDGET_USER_DATA)
+    0,                                       /* user data                      */
+    #endif
+    GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
+    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
+    sizeof(APP_SETTING_WINDOW_CONTROL_BLOCK), /* control block size            */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
+    gx_studio_window_create,                 /* create function                */
+    GX_NULL,                                 /* drawing function override      */
+    GX_NULL,                                 /* event function override        */
+    {0, 0, 319, 359},                        /* widget size                    */
+    GX_NULL,                                 /* next widget                    */
+    GX_NULL,                                 /* child widget                   */
+    0,                                       /* control block                  */
+    (void *) &app_setting_window_properties  /* extended properties            */
+};
+GX_WINDOW_PROPERTIES app_list_window_properties =
+{
+    0                                        /* wallpaper pixelmap id          */
+};
+
+GX_CONST GX_STUDIO_WIDGET app_list_window_define =
+{
+    "app_list_window",
+    GX_TYPE_WINDOW,                          /* widget type                    */
+    GX_ID_NONE,                              /* widget id                      */
+    #if defined(GX_WIDGET_USER_DATA)
+    0,                                       /* user data                      */
+    #endif
+    GX_STYLE_BORDER_NONE|GX_STYLE_TRANSPARENT|GX_STYLE_ENABLED,   /* style flags */
+    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
+    sizeof(APP_LIST_WINDOW_CONTROL_BLOCK),   /* control block size             */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
+    gx_studio_window_create,                 /* create function                */
+    GX_NULL,                                 /* drawing function override      */
+    GX_NULL,                                 /* event function override        */
+    {0, 0, 319, 359},                        /* widget size                    */
+    GX_NULL,                                 /* next widget                    */
+    GX_NULL,                                 /* child widget                   */
+    0,                                       /* control block                  */
+    (void *) &app_list_window_properties     /* extended properties            */
+};
+GX_WINDOW_PROPERTIES app_compass_window_properties =
+{
+    0                                        /* wallpaper pixelmap id          */
+};
+
+GX_CONST GX_STUDIO_WIDGET app_compass_window_define =
+{
+    "app_compass_window",
+    GX_TYPE_WINDOW,                          /* widget type                    */
+    GX_ID_NONE,                              /* widget id                      */
+    #if defined(GX_WIDGET_USER_DATA)
+    0,                                       /* user data                      */
+    #endif
+    GX_STYLE_BORDER_NONE|GX_STYLE_ENABLED,   /* style flags                    */
+    GX_STATUS_ACCEPTS_FOCUS,                 /* status flags                   */
+    sizeof(APP_COMPASS_WINDOW_CONTROL_BLOCK), /* control block size            */
+    GX_COLOR_ID_CANVAS,                      /* normal color id                */
+    GX_COLOR_ID_CANVAS,                      /* selected color id              */
+    GX_COLOR_ID_CANVAS,                      /* disabled color id              */
+    gx_studio_window_create,                 /* create function                */
+    GX_NULL,                                 /* drawing function override      */
+    GX_NULL,                                 /* event function override        */
+    {0, 0, 319, 359},                        /* widget size                    */
+    GX_NULL,                                 /* next widget                    */
+    GX_NULL,                                 /* child widget                   */
+    0,                                       /* control block                  */
+    (void *) &app_compass_window_properties  /* extended properties            */
+};
 GX_CONST GX_STUDIO_WIDGET_ENTRY guix_simple_widget_table[] =
 {
-    { &app_compass_window_define, (GX_WIDGET *) &app_compass_window },
-    { &wf_list_define, (GX_WIDGET *) &wf_list },
-    { &bt_pair_window_define, (GX_WIDGET *) &bt_pair_window },
-    { &language_sel_window_define, (GX_WIDGET *) &language_sel_window },
-    { &notify_center_window_define, (GX_WIDGET *) &notify_center_window },
-    { &control_center_window_define, (GX_WIDGET *) &control_center_window },
-    { &app_list_window_define, (GX_WIDGET *) &app_list_window },
+    { &app_stop_watch_window_define, (GX_WIDGET *) &app_stop_watch_window },
+    { &app_timer_window_define, (GX_WIDGET *) &app_timer_window },
+    { &app_breath_window_define, (GX_WIDGET *) &app_breath_window },
+    { &app_spo2_window_define, (GX_WIDGET *) &app_spo2_window },
+    { &app_heart_window_define, (GX_WIDGET *) &app_heart_window },
+    { &language_window_define, (GX_WIDGET *) &language_window },
+    { &message_window_define, (GX_WIDGET *) &message_window },
+    { &pairing_window_define, (GX_WIDGET *) &pairing_window },
     { &root_window_define, (GX_WIDGET *) &root_window },
+    { &app_music_window_define, (GX_WIDGET *) &app_music_window },
+    { &app_reminders_window_define, (GX_WIDGET *) &app_reminders_window },
+    { &app_alarm_window_define, (GX_WIDGET *) &app_alarm_window },
+    { &app_today_window_define, (GX_WIDGET *) &app_today_window },
+    { &app_sport_window_define, (GX_WIDGET *) &app_sport_window },
+    { &wf_list_define, (GX_WIDGET *) &wf_list },
+    { &control_center_window_define, (GX_WIDGET *) &control_center_window },
+    { &app_setting_window_define, (GX_WIDGET *) &app_setting_window },
+    { &app_list_window_define, (GX_WIDGET *) &app_list_window },
+    { &app_compass_window_define, (GX_WIDGET *) &app_compass_window },
     {GX_NULL, GX_NULL}
 };
 
@@ -545,6 +874,9 @@ UINT gx_studio_display_configure(USHORT display, UINT (*driver)(GX_DISPLAY *),
         }
     }
 
+/* Set screen rotation angle.                                                  */
+
+    display_info->display->gx_display_rotation_angle = display_info->rotation_angle;
 
 /* create the canvas for this display                                          */
 

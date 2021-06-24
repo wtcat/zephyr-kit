@@ -37,7 +37,7 @@
 /*  FUNCTION                                               RELEASE        */
 /*                                                                        */
 /*    _gx_multi_line_text_input_pen_down_process          PORTABLE C      */
-/*                                                           6.0          */
+/*                                                           6.1          */
 /*  AUTHOR                                                                */
 /*                                                                        */
 /*    Kenneth Maxwell, Microsoft Corporation                              */
@@ -82,6 +82,8 @@
 /*    DATE              NAME                      DESCRIPTION             */
 /*                                                                        */
 /*  05-19-2020     Kenneth Maxwell          Initial Version 6.0           */
+/*  09-30-2020     Kenneth Maxwell          Modified comment(s),          */
+/*                                            resulting in version 6.1    */
 /*                                                                        */
 /**************************************************************************/
 static UINT _gx_multi_line_text_input_pen_down_process(GX_MULTI_LINE_TEXT_INPUT *text_input, GX_EVENT *event_ptr)
@@ -144,7 +146,7 @@ UINT                  end_mark = text_input -> gx_multi_line_text_input_end_mark
 /*  FUNCTION                                               RELEASE        */
 /*                                                                        */
 /*    _gx_multi_line_text_input_pen_drag_process          PORTABLE C      */
-/*                                                           6.0          */
+/*                                                           6.1          */
 /*  AUTHOR                                                                */
 /*                                                                        */
 /*    Kenneth Maxwell, Microsoft Corporation                              */
@@ -188,6 +190,8 @@ UINT                  end_mark = text_input -> gx_multi_line_text_input_end_mark
 /*    DATE              NAME                      DESCRIPTION             */
 /*                                                                        */
 /*  05-19-2020     Kenneth Maxwell          Initial Version 6.0           */
+/*  09-30-2020     Kenneth Maxwell          Modified comment(s),          */
+/*                                            resulting in version 6.1    */
 /*                                                                        */
 /**************************************************************************/
 static UINT _gx_multi_line_text_input_pen_drag_process(GX_MULTI_LINE_TEXT_INPUT *text_input, GX_EVENT *event_ptr)
@@ -299,7 +303,7 @@ GX_VALUE              click_y;
 /*  FUNCTION                                               RELEASE        */
 /*                                                                        */
 /*    _gx_multi_line_text_input_event_process             PORTABLE C      */
-/*                                                           6.0          */
+/*                                                           6.1.3        */
 /*  AUTHOR                                                                */
 /*                                                                        */
 /*    Kenneth Maxwell, Microsoft Corporation                              */
@@ -351,6 +355,12 @@ GX_VALUE              click_y;
 /*    DATE              NAME                      DESCRIPTION             */
 /*                                                                        */
 /*  05-19-2020     Kenneth Maxwell          Initial Version 6.0           */
+/*  09-30-2020     Kenneth Maxwell          Modified comment(s),          */
+/*                                            resulting in version 6.1    */
+/*  12-31-2020     Kenneth Maxwell          Modified comment(s),          */
+/*                                            added logic to release      */
+/*                                            dynamic input buffer,       */
+/*                                            resulting in version 6.1.3  */
 /*                                                                        */
 /**************************************************************************/
 UINT  _gx_multi_line_text_input_event_process(GX_MULTI_LINE_TEXT_INPUT *text_input, GX_EVENT *event_ptr)
@@ -568,6 +578,19 @@ ULONG                    old_style;
 
     case GX_EVENT_MARK_HOME:
         _gx_multi_line_text_input_mark_home(text_input);
+        break;
+
+    case GX_EVENT_DELETE:
+        if (text_input -> gx_widget_status & GX_STATUS_DYNAMIC_BUFFER)
+        {
+            if (!_gx_system_memory_free)
+            {
+                return GX_SYSTEM_MEMORY_ERROR;
+            }
+
+            _gx_system_memory_free((void *)text_input -> gx_multi_line_text_view_text.gx_string_ptr);
+            text_input -> gx_multi_line_text_view_text.gx_string_ptr = GX_NULL;
+        }
         break;
 
     default:

@@ -43,14 +43,38 @@ static void wf_get_hour(void *data)
 	*(int *)data = posix_time_now.tm_hour;
 }
 
+static void wf_get_hour_tens(void *data)
+{
+	*(int *)data = posix_time_now.tm_hour / 10;
+}
+static void wf_get_hour_uinits(void *data)
+{
+	*(int *)data = posix_time_now.tm_hour % 10;
+}
+
 static void wf_get_min(void *data)
 {
 	*(int *)data = posix_time_now.tm_min;
 }
-
+static void wf_get_min_tens(void *data)
+{
+	*(int *)data = posix_time_now.tm_min / 10;
+}
+static void wf_get_min_uinits(void *data)
+{
+	*(int *)data = posix_time_now.tm_min % 10;
+}
 static void wf_get_sec(void *data)
 {
 	*(int *)data = posix_time_now.tm_sec;
+}
+static void wf_get_sec_tens(void *data)
+{
+	*(int *)data = posix_time_now.tm_sec / 10;
+}
+static void wf_get_sec_units(void *data)
+{
+	*(int *)data = posix_time_now.tm_sec % 10;
 }
 
 static void wf_get_batt_cap(void *data)
@@ -116,6 +140,15 @@ static void wf_get_calories(void *data)
 	*(uint16_t *)data = calories;
 }
 
+static void wf_get_am_pm(void *data)
+{
+	if (posix_time_now.tm_hour >= 12) {
+		*(uint8_t *)data = 1;
+	} else {
+		*(uint8_t *)data = 0;
+	}
+}
+
 static wf_port_get_value func_array[ELEMENT_TYPE_MAX] = {NULL};
 
 void wf_reg_data_func(wf_port_get_value func, element_type_enum type)
@@ -136,8 +169,15 @@ void wf_port_init(void)
 	wf_reg_data_func(wf_get_mday, ELEMENT_TYPE_DAY);
 	wf_reg_data_func(wf_get_wday, ELEMENT_TYPE_WEEK_DAY);
 	wf_reg_data_func(wf_get_hour, ELEMENT_TYPE_HOUR);
+	wf_reg_data_func(wf_get_hour_tens, ELEMENT_TYPE_HOUR_TENS);
+	wf_reg_data_func(wf_get_hour_uinits, ELEMENT_TYPE_HOUR_UNITS);
 	wf_reg_data_func(wf_get_min, ELEMENT_TYPE_MIN);
+	wf_reg_data_func(wf_get_min_tens, ELEMENT_TYPE_MIN_TENS);
+	wf_reg_data_func(wf_get_min_uinits, ELEMENT_TYPE_MIN_UNITS);
 	wf_reg_data_func(wf_get_sec, ELEMENT_TYPE_SEC);
+	wf_reg_data_func(wf_get_sec_tens, ELEMENT_TYPE_SEC_TENS);
+	wf_reg_data_func(wf_get_sec_units, ELEMENT_TYPE_SEC_UNITS);
+	wf_reg_data_func(wf_get_am_pm, ELEMENT_TYPE_AM_PM);
 
 	// battery
 	wf_reg_data_func(wf_get_batt_cap, ELEMENT_TYPE_BATTERY_CAPACITY);

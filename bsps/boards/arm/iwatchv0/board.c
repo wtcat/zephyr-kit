@@ -429,7 +429,11 @@ static const struct io_config lcd_gpios[] = {
  * Touch pannel 
  */
 static const struct io_config tp_gpios[] = {
-	_IO_ITEM("tp_vbus_en", 60, IO_HIGH, &k_gpio_output_max),
+#if defined(CONFIG_BOARD_PATCH_V0)
+	_IO_ITEM("tp_vbus_en", 60, IO_LOW, &k_gpio_output_max),
+#else
+    _IO_ITEM("tp_vbus_en", 60, IO_HIGH, &k_gpio_output_max),
+#endif
 	_IO_ITEM("tp_reset", 61, IO_HIGH, &k_gpio_output),
 	_IO_ITEM("tp_en", 57, IO_HIGH, &k_gpio_output_max),
 	_IO_ITEM("tp_sda", 40, IO_NONE, &k_tp_iom4_sda),
@@ -536,6 +540,14 @@ static const struct io_config button_gpios[] = {
     _IO_ITEM("power_key", 16, IO_NONE, &k_gpio_intr),
     _NULL_IO    
 };
+
+/*
+ * Motor 
+ */
+static const struct io_config motor_gpios[] = {
+    _IO_ITEM("motor",  45, IO_LOW, &k_gpio_output),
+    _NULL_IO    
+};
 /*
  * Board GPIO configure information
  */
@@ -551,6 +563,7 @@ static const struct io_array board_gpio_array[] = {
     _BOARD_IO(battery_gpios),
     _BOARD_IO(uart0_gpios),
     _BOARD_IO(button_gpios),
+    _BOARD_IO(motor_gpios),
 
      {NULL} /* End */
 };

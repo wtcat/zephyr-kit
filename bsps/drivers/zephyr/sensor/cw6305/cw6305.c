@@ -427,12 +427,12 @@ static int cw6305_init(const struct device *dev)
             cw6305_stack, K_KERNEL_STACK_SIZEOF(cw6305_stack),
     		(k_thread_entry_t)charge_daemon, (void *)dev, NULL, NULL,
     		CONFIG_SYSTEM_WORKQUEUE_PRIORITY+1, 0, K_NO_WAIT);
-    k_thread_name_set(tid, "Charge-Daemon");
+    k_thread_name_set(tid, "/sensor@charge");
     gpio_init_callback(&priv->cb, 
                           cw6305_interrupt_process,
                           BIT(pin2gpio(priv->pin)));
     gpio_add_callback(priv->gpio, &priv->cb);
-    ret = gpio_pin_configure(priv->gpio, priv->pin, 
+    ret = gpio_pin_interrupt_configure(priv->gpio, priv->pin, 
         GPIO_INT_EDGE_BOTH|GPIO_INPUT|GPIO_PULL_UP);
     if (ret) {
         LOG_ERR("CW6305 configure gpio interrupt failed\n");

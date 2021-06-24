@@ -1,5 +1,6 @@
 
 #include <errno.h>
+#include <version.h>
 #include <kernel.h>
 #include <device.h>
 #include <soc.h>
@@ -11,6 +12,16 @@ LOG_MODULE_REGISTER(i2c_apollo3p);
 
 #include "i2c/i2c-priv.h"
 #include "i2c/i2c-message.h"
+
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(2,6,0)
+#define device_pm_cb pm_device_cb
+#define DEVICE_PM_SET_POWER_STATE  PM_DEVICE_STATE_SET
+#define DEVICE_PM_GET_POWER_STATE  PM_DEVICE_STATE_GET
+#define DEVICE_PM_ACTIVE_STATE     PM_DEVICE_STATE_ACTIVE
+#define DEVICE_PM_LOW_POWER_STATE  PM_DEVICE_STATE_LOW_POWER
+#define DEVICE_PM_SUSPEND_STATE    PM_DEVICE_STATE_SUSPEND
+#define DEVICE_PM_FORCE_SUSPEND_STATE PM_DEVICE_STATE_FORCE_SUSPEND
+#endif
 
 #define I2C_DMABUF_SIZE (2*26)
 
@@ -322,8 +333,15 @@ static const struct i2c_driver_api i2c_apollo3p_compatible_driver_api = {
 */
 
 #ifdef CONFIG_PM_DEVICE
-static int i2c_pm_control(const struct device *dev, uint32_t command,
-                void *context, device_pm_cb cb, void *arg)
+static int i2c_pm_control(const struct device *dev, 
+                        uint32_t command,
+#if KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(2,6,0)
+                        uint32_t *context,
+#else
+                        void *context, 
+#endif
+                        device_pm_cb cb, 
+                        void *arg)
 {
     uint32_t state = *(uint32_t *)context;
     if (command == DEVICE_PM_SET_POWER_STATE) {
@@ -342,7 +360,7 @@ static int i2c_pm_control(const struct device *dev, uint32_t command,
 }
 
 #else
-#define i2c_pm_control device_pm_control_nop
+#define i2c_pm_control NULL
 #endif /* CONFIG_PM_DEVICE */
 
 #define I2C_APOLLO3P(name, _driver_api) \

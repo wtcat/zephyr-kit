@@ -2,6 +2,9 @@
 #include "sys/util.h"
 #include "watch_face_port.h"
 #include "watch_face_theme_draw.h"
+#include "logging/log.h"
+
+LOG_MODULE_REGISTER(wf_theme);
 static struct watch_face_header watch_face_header_curr;
 static uint8_t _element_cnts_actual = 0;
 static element_style_t element_style_list[ELEMENT_MAX_CNT];
@@ -195,133 +198,24 @@ element_style_t *wft_element_styles_get(void)
 
 bool wft_element_refresh_judge(element_style_t *style)
 {
-	switch (style->e_info.e_type) {
-	case ELEMENT_TYPE_SEC: {
-		static uint8_t sec_old = 0xff;
-		uint8_t sec_now = 0;
-		wf_port_get_value func = wf_get_data_func(style->e_info.e_type);
-		if (func != NULL) {
-			func(&sec_now);
+	static uint32_t data_last[ELEMENT_TYPE_MAX];
+
+	uint32_t value_new;
+	wf_port_get_value func = wf_get_data_func(style->e_info.e_type);
+	if (func != NULL) {
+		func(&value_new);
+	} else {
+		if (style->e_info.e_type != ELEMENT_TYPE_IMG) {
+			LOG_ERR("type %d have no data func!", style->e_info.e_type);
 		}
-		if (sec_now != sec_old) {
-			sec_old = sec_now;
-			return true;
-		}
-		break;
-	}
-	case ELEMENT_TYPE_MIN: {
-		static uint8_t min_old = 0xff;
-		uint8_t min_now = 0;
-		wf_port_get_value func = wf_get_data_func(style->e_info.e_type);
-		if (func != NULL) {
-			func(&min_now);
-		}
-		if (min_now != min_old) {
-			min_old = min_now;
-			return true;
-		}
-		break;
-	}
-	case ELEMENT_TYPE_HOUR: {
-		static uint8_t hour_old = 0xff;
-		uint8_t hour_now = 0;
-		wf_port_get_value func = wf_get_data_func(style->e_info.e_type);
-		if (func != NULL) {
-			func(&hour_now);
-		}
-		if (hour_now != hour_old) {
-			hour_old = hour_now;
-			return true;
-		}
-		break;
-	}
-	case ELEMENT_TYPE_DAY: {
-		static uint8_t day_old = 0xff;
-		uint8_t day_now = 0;
-		wf_port_get_value func = wf_get_data_func(style->e_info.e_type);
-		if (func != NULL) {
-			func(&day_now);
-		}
-		if (day_now != day_old) {
-			day_old = day_now;
-			return true;
-		}
-		break;
-	}
-	case ELEMENT_TYPE_MONTH: {
-		static uint8_t mon_old = 0xff;
-		uint8_t mon_now = 0;
-		wf_port_get_value func = wf_get_data_func(style->e_info.e_type);
-		if (func != NULL) {
-			func(&mon_now);
-		}
-		if (mon_now != mon_old) {
-			mon_old = mon_now;
-			return true;
-		}
-		break;
-	}
-	case ELEMENT_TYPE_YEAR: {
-		static int value_old = 0xff;
-		int value_now = 0;
-		wf_port_get_value func = wf_get_data_func(style->e_info.e_type);
-		if (func != NULL) {
-			func(&value_now);
-		}
-		if (value_now != value_old) {
-			value_old = value_now;
-			return true;
-		}
-		break;
-	}
-	case ELEMENT_TYPE_AM_PM: {
-		static uint8_t value_old = 0xff;
-		uint8_t value_now = 0;
-		wf_port_get_value func = wf_get_data_func(ELEMENT_TYPE_HOUR);
-		if (func != NULL) {
-			func(&value_now);
-		}
-		if (value_now != value_old) {
-			value_old = value_now;
-			return true;
-		}
-		break;
-	}
-	case ELEMENT_TYPE_WEEK_DAY: {
-		static uint8_t value_old = 0xff;
-		uint8_t value_now = 0;
-		wf_port_get_value func = wf_get_data_func(style->e_info.e_type);
-		if (func != NULL) {
-			func(&value_now);
-		}
-		if (value_now != value_old) {
-			value_old = value_now;
-			return true;
-		}
-		break;
-	}
-	case ELEMENT_TYPE_STEPS:
-	case ELEMENT_TYPE_CALORIE:
-	case ELEMENT_TYPE_HEART_RATE:
-	case ELEMENT_TYPE_BATTERY_CAPACITY:
-	case ELEMENT_TYPE_WEATHER:
-	case ELEMENT_TYPE_TEMP: {
-		static uint8_t sec_old = 0xff;
-		uint8_t sec_now = 0;
-		wf_port_get_value func = wf_get_data_func(ELEMENT_TYPE_SEC);
-		if (func != NULL) {
-			func(&sec_now);
-		}
-		uint8_t sec_delta = sec_now > sec_old ? (sec_now - sec_old) : (sec_now + 60 - sec_old);
-		if (sec_delta >= 2) {
-			sec_old = sec_now;
-			return true;
-		}
-		break;
-	}
-	default:
 		return false;
 	}
+
+	if (value_new != data_last[style->e_info.e_type]) {
+		data_last[style->e_info.e_type] = value_new;
+		return true;
+	}
+
 	return false;
 }
 

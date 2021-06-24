@@ -23,9 +23,15 @@
 
 #define CONFIG_NO_TE_PIN 0
 
+static uint8_t brightness;
+
 struct lcd_driver;
 struct lcd_render {
 	struct k_sem sem;
+
+	struct k_sem te_ready;
+	struct k_mutex mutex_op;
+
 	GX_RECTANGLE rect;
 	struct lcd_driver *lcd;
 	uint16_t *buffer;
@@ -81,6 +87,9 @@ struct lcd_cmd {
 #define PIXEL_BYTE 3
 #endif
 #define LCD_WIDTH 320
+
+#define MIN_WIDTH_BY_DMA 100
+#define MIN_COL_SIZE_BY_DMA 5
 #define LCD_HEIGH 360
 
 #ifdef CONFIG_LCD_DEBUG
@@ -165,6 +174,7 @@ static void lcd_render_next(struct lcd_render *render)
 
 static void spi_dma_cb(void *pCallbackCtxt, uint32_t status)
 {
+	compiler_barrier();
 	struct lcd_driver *lcd = pCallbackCtxt;
 	lcd_render_next(&lcd->render);
 }
@@ -355,7 +365,9 @@ static void lcd_sync_render(struct lcd_driver *lcd);
 static void lcd_renderer_init(struct lcd_driver *lcd, struct GX_CANVAS_STRUCT *canvas, GX_RECTANGLE *area)
 {
 	GX_RECTANGLE limit;
-
+#if !CONFIG_NO_TE_PIN
+	k_sem_reset(&lcd->render.te_ready);
+#endif
 	_gx_utility_rectangle_define(&limit, 0, 0, canvas->gx_canvas_x_resolution - 1, canvas->gx_canvas_y_resolution - 1);
 	if (_gx_utility_rectangle_overlap_detect(&limit, &canvas->gx_canvas_dirty_area, area)) {
 		area->gx_rectangle_left &= 0xfffe;
@@ -374,42 +386,40 @@ static void lcd_renderer_init(struct lcd_driver *lcd, struct GX_CANVAS_STRUCT *c
 		struct lcd_render *render = &lcd->render;
 		ULONG offset;
 
-#if 1
-		if (row_size != LCD_WIDTH) {
+		if ((row_size < MIN_WIDTH_BY_DMA) && (col_size < MIN_COL_SIZE_BY_DMA)) {
 			render->draw = lcd_draw_by_line;
 			render->row_size = row_size * PIXEL_BYTE;
+			render->remain = row_size * col_size * PIXEL_BYTE;
 		} else {
 			render->draw = lcd_draw_by_dmabuf;
 			render->row_size = LCD_WIDTH * PIXEL_BYTE;
+			area->gx_rectangle_left = 0;
+			area->gx_rectangle_right = LCD_WIDTH - 1;
+			render->remain = LCD_WIDTH * col_size * PIXEL_BYTE;
 		}
-#else
-		render->draw = lcd_draw_by_line;
-		render->row_size = row_size * PIXEL_BYTE;
-#endif
 
 		offset = area->gx_rectangle_top * canvas->gx_canvas_x_resolution + area->gx_rectangle_left;
 		render->buffer = buffer + offset;
-		render->remain = row_size * col_size * PIXEL_BYTE;
 		render->lcd = lcd;
-
 		render->rect.gx_rectangle_left = area->gx_rectangle_left + canvas->gx_canvas_display_offset_x;
 		render->rect.gx_rectangle_right = area->gx_rectangle_right + canvas->gx_canvas_display_offset_x;
 		render->rect.gx_rectangle_top = area->gx_rectangle_top + canvas->gx_canvas_display_offset_y;
 		render->rect.gx_rectangle_bottom = area->gx_rectangle_bottom + canvas->gx_canvas_display_offset_y;
 		render->canvas = canvas;
-		compiler_barrier();
 		render->state = lcd_render_state_ready;
 
-#if CONFIG_NO_TE_PIN
-		lcd_sync_render(lcd);
+#if !CONFIG_NO_TE_PIN
+		k_sem_take(&render->te_ready, K_FOREVER);
 #endif
+		lcd_sync_render(lcd);
+	} else {
+		k_sem_give(&lcd->render.sem);
 	}
 }
 
 static void lcd_sync_render(struct lcd_driver *lcd)
 {
 	struct lcd_render *render = &lcd->render;
-
 	if (render->state == lcd_render_state_ready)
 		render->state(render);
 }
@@ -422,7 +432,7 @@ static void lcd_display_update(struct GX_CANVAS_STRUCT *canvas, GX_RECTANGLE *ar
 	GX_EVENT event;
 	int ret;
 
-	value_test = gpio_pin_get(lcd->gpio_te, lcd->pin_te & 31);
+	// value_test = gpio_pin_get(lcd->gpio_te, lcd->pin_te & 31);
 
 #if IS_ENABLED(CONFIG_LCD_DOUBLE_BUFFER)
 	k_spinlock_key_t key;
@@ -448,6 +458,7 @@ static void lcd_display_update(struct GX_CANVAS_STRUCT *canvas, GX_RECTANGLE *ar
 	if (ret)
 		goto reinit;
 #else
+	k_mutex_lock(&render->mutex_op, K_FOREVER);
 	if (render->state == lcd_render_state_idle) {
 		lcd_dbg("LCD display start P0(%d, %d) P1(%d, %d)\n", area->gx_rectangle_left, area->gx_rectangle_top,
 				area->gx_rectangle_right, area->gx_rectangle_bottom);
@@ -459,12 +470,14 @@ static void lcd_display_update(struct GX_CANVAS_STRUCT *canvas, GX_RECTANGLE *ar
 		printk("%s LCD controller occurred error\n", __func__);
 	}
 #endif /* CONFIG_LCD_DOUBLE_BUFFER */
+	k_mutex_unlock(&render->mutex_op);
 	return;
 
 reinit:
 	printk("%s LCD render timeout(state: 0x%p)\n", __func__, render->state);
 	lcd_hardware_reset(lcd);
 	lcd_setup_commands(lcd, lcd_command, ARRAY_SIZE(lcd_command));
+	brightness = 255;
 #if 1
 	lcd_set_partial_para(lcd, 0x15, 0x152, 0x01, 0x166);
 #else
@@ -478,13 +491,17 @@ reinit:
 	event.gx_event_type = GX_EVENT_REDRAW;
 	event.gx_event_target = NULL;
 	gx_system_event_fold(&event);
+	k_mutex_unlock(&render->mutex_op);
 }
 
 static void lcd_te_isr(int pin, void *params)
 {
 	struct lcd_driver *lcd = params;
 #if !CONFIG_NO_TE_PIN
-	lcd_sync_render(lcd);
+	compiler_barrier();
+	if (lcd->render.state == lcd_render_state_ready) {
+		k_sem_give(&lcd->render.te_ready);
+	}
 #endif
 	(void)pin;
 }
@@ -552,14 +569,30 @@ int lcd_brightness_adjust(uint8_t value)
 {
 	struct lcd_driver *lcd = &lcd_drv;
 	uint8_t bright = value;
+#if 0
+	k_mutex_lock(&lcd->render.mutex_op, K_FOREVER);
 	if (lcd->render.state == lcd_render_state_idle) {
 		unsigned key = irq_lock();
 		lcd_write_cmd(lcd->spi, 0x51, &bright, 1, false);
 		irq_unlock(key);
+		k_mutex_unlock(&lcd->render.mutex_op);
 		return 0;
 	} else {
+		printk("69092 busy!\n");
+		k_mutex_unlock(&lcd->render.mutex_op);
 		return -EBUSY;
 	}
+#else
+	k_mutex_lock(&lcd->render.mutex_op, K_FOREVER);
+	lcd_write_cmd(lcd->spi, 0x51, &bright, 1, false);
+	k_mutex_unlock(&lcd->render.mutex_op);
+	brightness = value;
+#endif
+}
+
+uint8_t lcd_brightness_get(void)
+{
+	return brightness;
 }
 
 static VOID lcd_canvas_draw_start(struct GX_DISPLAY_STRUCT *display, struct GX_CANVAS_STRUCT *canvas)
@@ -600,6 +633,10 @@ static UINT lcd_driver_setup(GX_DISPLAY *display)
 
 	k_sem_init(&lcd->render.sem, 0, 1);
 
+	k_sem_init(&lcd->render.te_ready, 0, 1);
+
+	k_mutex_init(&lcd->render.mutex_op);
+
 	/* Setup SPI interface */
 	if (lcd_setup_spi(lcd))
 		goto exit;
@@ -616,13 +653,14 @@ static UINT lcd_driver_setup(GX_DISPLAY *display)
 	ret = lcd_setup_commands(lcd, lcd_command, ARRAY_SIZE(lcd_command));
 	if (ret)
 		goto exit;
+	brightness = 255;
 
 	lcd_set_partial_para(lcd, 0x15, 0x152, 0x01, 0x166);
 	lcd_write_cmd(lcd->spi, 0x12, NULL, 0, false);
 	lcd_write_cmd(lcd->spi, 0x11, NULL, 0, false);
 	/* Display ON */
 	lcd_write_cmd(lcd->spi, 0x29, NULL, 0, false);
-	lcd->render.timeout = K_MSEC(100);
+	lcd->render.timeout = K_MSEC(2000);
 
 #ifdef CONFIG_LCD_RGB565_FORMAT
 	_gx_display_driver_565rgb_setup(display, lcd, lcd_display_update);

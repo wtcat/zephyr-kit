@@ -3,17 +3,23 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
+
+#include <sys/util.h>
 
 #ifdef CONFIG_GUIX_USER_MODE
 #include <app_memory/app_memdomain.h>
 #endif
 
 #include "guix_zephyr_notify.h"
-
 #include "base/observer_class.h"
 
 typedef INT    GX_BOOL;
 typedef SHORT  GX_VALUE;
+
+
+#define UX_MSEC(n) \
+    (((n) + (GX_SYSTEM_TIMER_MS - 1)) / GX_SYSTEM_TIMER_MS)
 
 #define GX_VALUE_MAX                        0x7FFF
 
@@ -28,6 +34,10 @@ typedef SHORT  GX_VALUE;
 
 #ifndef GX_TICKS_SECOND
 #define GX_TICKS_SECOND                     20
+#endif
+
+#ifndef GX_WIDGET_USER_DATA
+#define GX_WIDGET_USER_DATA
 #endif
 
 #define GX_CONST                            const
@@ -46,6 +56,8 @@ typedef SHORT  GX_VALUE;
 #define GX_NOT_ISR_CALLER_CHECKING
 #define GX_THREAD_WAIT_CALLER_CHECKING
 
+#define GX_MAX_CONTEXT_NESTING 20
+
 /* */
 #define __gxidata K_APP_DMEM(guix_partition)
 #define __gxdata  K_APP_BMEM(guix_partition)
@@ -57,6 +69,8 @@ extern "C"{
 struct GX_DISPLAY_STRUCT;
 struct GX_THEME_STRUCT;
 struct GX_STRING_STRUCT;
+struct GX_EVENT_STRUCT;
+
 
 #define INVALID_MAP_ADDR ((void *)(-1))
 struct gxres_device {
@@ -96,6 +110,11 @@ UINT guix_main(UINT disp_id, struct guix_driver *drv);
  */
 int guix_driver_register(struct guix_driver *drv);
 int gxres_device_register(struct gxres_device *dev);
+
+/*
+ * Wake up event filter
+ */
+void guix_event_filter_set(bool (*filter)(struct GX_EVENT_STRUCT *));
 
 /*
  * method:

@@ -506,7 +506,7 @@ static int bt_apollo3p_open(void)
             (k_thread_entry_t)bt_drv_rx_thread, NULL, NULL, NULL,
             K_PRIO_COOP(CONFIG_BT_DRIVER_RX_PRIO),
             0, K_NO_WAIT);
-    k_thread_name_set(thr, "BT DRV-RX-THREAD");
+    k_thread_name_set(thr, "/bt@hci-driver");
 
 #ifdef CONFIG_HCI_SET_MAC_ADDR
     err = bt_hci_cmd_send_sync(BT_HCI_OP_RESET, NULL, NULL);

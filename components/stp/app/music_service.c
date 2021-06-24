@@ -63,7 +63,7 @@ static void music_player_control(const void *buf, size_t size,
 _exit:
     if (obuf) {
         m.hdr.minor = MUSIC_REQ_PREV;
-        m.hdr.len = ltons(1);
+        m.hdr.len = ltons(OPC_SLEN(1));
         m.hdr.data[0] = result;
         net_buf_add_mem(obuf, &m.hdr, OPC_SUBHDR_SIZE + 1);
     }
@@ -72,31 +72,31 @@ _exit:
 static void music_switch_to_preivous(const void *buf, size_t size,
     struct net_buf *obuf)
 {
-    music_player_control(buf, size, obuf, MUSIC_REQ_PREV);
+    music_player_control(buf, OPC_LEN(size), obuf, MUSIC_REQ_PREV);
 }
 
 static void music_switch_to_next(const void *buf, size_t size,
     struct net_buf *obuf)
 {
-    music_player_control(buf, size, obuf, MUSIC_REQ_NEXT);
+    music_player_control(buf, OPC_LEN(size), obuf, MUSIC_REQ_NEXT);
 }
 
 static void music_player_pause(const void *buf, size_t size,
     struct net_buf *obuf)
 {
-    music_player_control(buf, size, obuf, MUSIC_REQ_PAUSE);
+    music_player_control(buf, OPC_LEN(size), obuf, MUSIC_REQ_PAUSE);
 }
 
 static void music_player_start(const void *buf, size_t size,
     struct net_buf *obuf)
 {
-    music_player_control(buf, size, obuf, MUSIC_REQ_PLAY);
+    music_player_control(buf, OPC_LEN(size), obuf, MUSIC_REQ_PLAY);
 }
 
 static void music_player_sync_volume(const void *buf, size_t size,
     struct net_buf *obuf)
 {
-    music_player_control(buf, size, obuf, MUSIC_REQ_PLAY);
+    music_player_control(buf, OPC_LEN(size), obuf, MUSIC_REQ_PLAY);
 }
 
 STP_SERVICE(music, OPC_CLASS_MUSIC, MUSIC_REQ_PREV, music_switch_to_preivous);

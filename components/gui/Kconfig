@@ -40,7 +40,7 @@ config GUIX_MEMPOOL_SIZE
 	  
 config GUI_SPLIT_BINRES
 	bool "GUI split resource files and execute code"
-	depends on GUIX_MEMPOOL_SIZE >= 61440
+	#depends on GUIX_MEMPOOL_SIZE >= 61440
 
 config RGB565_SWAP_BYTEORDER
 	bool "GUI rgb565 driver swap byteorder"

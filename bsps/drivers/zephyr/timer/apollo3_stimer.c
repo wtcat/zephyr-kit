@@ -4,7 +4,8 @@
  ***********************************************
  */
 
-#include "sys/printk.h"
+#include <sys/printk.h>
+#include <version.h>
 #include <soc.h>
 #include <drivers/clock_control.h>
 #include <drivers/clock_control/stm32_clock_control.h>
@@ -40,6 +41,15 @@ static volatile uint32_t g_last_stimer_cnt = 0;        //record last stimer valu
 static volatile uint32_t accum_stimer_cnt;       //record total stimer value
 
 static struct k_spinlock lock;
+
+#if (KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(2,6,0))
+#define z_clock_driver_init  sys_clock_driver_init
+#define z_clock_elapsed      sys_clock_elapsed
+#define z_clock_set_timeout  sys_clock_set_timeout
+#define z_timer_cycle_get_32 sys_clock_cycle_get_32 
+#define z_clock_announce     sys_clock_announce
+#endif
+
 //*****************************************************************************
 // compare0 and compare1 will call this function
 // to announce ticks elapsed since last announce!
@@ -223,7 +233,6 @@ void z_clock_set_timeout(int32_t ticks, bool idle)
 
 	k_spin_unlock(&lock, key);
 }
-
 
 uint32_t z_clock_elapsed(void)
 {

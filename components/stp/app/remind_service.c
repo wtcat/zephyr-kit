@@ -20,8 +20,8 @@ static void message_remind_service(const void *buf, size_t size,
     Remind__Message *msg;
 
     hdr->minor = MESSAGE_REMIND;
-    hdr->len = ltons(1);
-    msg = remind__message__unpack(NULL, size, buf);
+    hdr->len = ltons(OPC_SLEN(1));
+    msg = remind__message__unpack(NULL, OPC_LEN(size), buf);
     if (msg == NULL) {
         LOG_ERR("%s(): Receive text message failed\n", __func__);
         hdr->data[0] = 0x1;

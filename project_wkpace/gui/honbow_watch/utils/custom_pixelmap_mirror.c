@@ -5,19 +5,28 @@
 #include <errno.h>
 #include <kernel.h>
 #include <stdint.h>
+#include "section_tags.h"
 
-static K_MEM_SLAB_DEFINE(mirror_buff_pool, 259200, 1, 4);
+#define USE_MIRROR 0
+
+#if USE_MIRROR
+struct k_mem_slab mirror_buff_pool;
+__psram_noinit static uint8_t __aligned(sizeof(void *)) mirror_buff_pool_buf[259200];
 
 static K_MEM_SLAB_DEFINE(mirror_obj_pool, sizeof(mirror_obj_t), 4, 4);
+#endif
 
 void mirror_obj_init(void)
 {
-	// do nothing
+// do nothing
+#if USE_MIRROR
+	k_mem_slab_init(&mirror_buff_pool, mirror_buff_pool_buf, sizeof(mirror_buff_pool_buf), 1);
+#endif
 }
 
-int mirror_obj_create(mirror_obj_t **obj, uint16_t width, uint16_t height,
-					  uint8_t color_bytes)
+int mirror_obj_create(mirror_obj_t **obj, uint16_t width, uint16_t height, uint8_t color_bytes)
 {
+#if USE_MIRROR
 	int err;
 	GX_UBYTE *buff;
 
@@ -40,20 +49,23 @@ int mirror_obj_create(mirror_obj_t **obj, uint16_t width, uint16_t height,
 
 		memset(&(*obj)->canvas, 0, sizeof(GX_CANVAS));
 		/* Create a canvas for drawing mirror. */
-		gx_canvas_create(&(*obj)->canvas, "mirror", NULL, GX_CANVAS_SIMPLE,
-						 width, height,
-						 (GX_COLOR *)(*obj)->map.gx_pixelmap_data,
-						 (*obj)->map.gx_pixelmap_data_size);
+		gx_canvas_create(&(*obj)->canvas, "mirror", NULL, GX_CANVAS_SIMPLE, width, height,
+						 (GX_COLOR *)(*obj)->map.gx_pixelmap_data, (*obj)->map.gx_pixelmap_data_size);
 		(*obj)->in_use = 1;
 	} else {
 		k_mem_slab_free(&mirror_obj_pool, (void **)&buff);
 		return -ENOSPC;
 	}
 	return 0;
+#else
+	*obj = NULL;
+	return -ENOSPC;
+#endif
 }
 
 int mirror_obj_create_copy(mirror_obj_t **obj, const GX_CANVAS *canvas_src)
 {
+#if USE_MIRROR
 	int err;
 	GX_UBYTE *buff;
 
@@ -72,12 +84,10 @@ int mirror_obj_create_copy(mirror_obj_t **obj, const GX_CANVAS *canvas_src)
 		GX_VALUE width = canvas_src->gx_canvas_display->gx_display_width;
 		uint8_t color_bytes;
 
-		if (canvas_src->gx_canvas_display->gx_display_color_format ==
-			GX_COLOR_FORMAT_565RGB) {
+		if (canvas_src->gx_canvas_display->gx_display_color_format == GX_COLOR_FORMAT_565RGB) {
 			color_bytes = 2;
 		} else {
-			printk(
-				"error!!!! now not support other color format, except 565bgr");
+			printk("error!!!! now not support other color format, except 565bgr");
 			return -ENOTSUP;
 		}
 
@@ -85,30 +95,35 @@ int mirror_obj_create_copy(mirror_obj_t **obj, const GX_CANVAS *canvas_src)
 		(*obj)->map.gx_pixelmap_data_size = width * height * color_bytes;
 		(*obj)->map.gx_pixelmap_height = height;
 		(*obj)->map.gx_pixelmap_width = width;
-		(*obj)->map.gx_pixelmap_format =
-			canvas_src->gx_canvas_display->gx_display_color_format;
+		(*obj)->map.gx_pixelmap_format = canvas_src->gx_canvas_display->gx_display_color_format;
 
 		memset(&(*obj)->canvas, 0, sizeof(GX_CANVAS));
 		/* Create a canvas for drawing mirror. */
-		gx_canvas_create(&(*obj)->canvas, "mirror",
-						 canvas_src->gx_canvas_display, GX_CANVAS_SIMPLE, width,
-						 height, (GX_COLOR *)(*obj)->map.gx_pixelmap_data,
-						 (*obj)->map.gx_pixelmap_data_size);
+		gx_canvas_create(&(*obj)->canvas, "mirror", canvas_src->gx_canvas_display, GX_CANVAS_SIMPLE, width, height,
+						 (GX_COLOR *)(*obj)->map.gx_pixelmap_data, (*obj)->map.gx_pixelmap_data_size);
 		(*obj)->in_use = 1;
 	} else {
 		k_mem_slab_free(&mirror_obj_pool, (void **)&buff);
 		return -ENOSPC;
 	}
 	return 0;
+#else
+	*obj = NULL;
+	return -ENOSPC;
+#endif
 }
 
 void mirror_obj_delete(mirror_obj_t **obj)
 {
-	gx_canvas_delete(&(*obj)->canvas);
-	k_mem_slab_free(&mirror_buff_pool, (void **)&(*obj)->map.gx_pixelmap_data);
-	k_mem_slab_free(&mirror_obj_pool, (void **)obj);
-	(*obj)->in_use = 0;
-	*obj = NULL;
+#if USE_MIRROR
+	if (*obj != NULL) {
+		gx_canvas_delete(&(*obj)->canvas);
+		k_mem_slab_free(&mirror_buff_pool, (void **)&(*obj)->map.gx_pixelmap_data);
+		k_mem_slab_free(&mirror_obj_pool, (void **)obj);
+		(*obj)->in_use = 0;
+		*obj = NULL;
+	}
+#endif
 	return;
 }
 
@@ -117,12 +132,12 @@ void mirror_obj_delete(mirror_obj_t **obj)
 //     or you can draw the canvas of mirror obj by your own draw func.
 int mirror_obj_copy(GX_CANVAS *dst, GX_CANVAS *src, uint16_t offset)
 {
+#if USE_MIRROR
 	if ((dst == NULL) || (src == NULL)) {
-		return -EFAULT;
+		return -EINVAL;
 	}
 
-	memcpy((char *)dst->gx_canvas_memory,
-		   (char *)src->gx_canvas_memory + offset, dst->gx_canvas_memory_size);
-
+	memcpy((char *)dst->gx_canvas_memory, (char *)src->gx_canvas_memory + offset, dst->gx_canvas_memory_size);
+#endif
 	return 0;
 }

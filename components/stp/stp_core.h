@@ -7,6 +7,12 @@
 extern "C"{
 #endif
 
+#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#define __CPU_LITTLE_ENDIAN__ 
+#else
+#define __CPU_BIG_ENDIAN__
+#endif
+
 
 #define STP_MAX_PAYLOAD 256
 
@@ -41,19 +47,19 @@ struct net_buf;
 
 struct stp_header {
     uint16_t stx;
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
+#ifndef __CPU_LITTLE_ENDIAN__
     uint8_t upload:1;
     uint8_t request:1;
     uint8_t require_ack:1;
     uint8_t reserved:1;
     uint8_t version:4;
-#else
+#else /* !__CPU_LITTLE_ENDIAN__ */
     uint8_t version:4;
     uint8_t reserved:1;
     uint8_t require_ack:1;
     uint8_t request:1;
     uint8_t upload:1;
-#endif
+#endif /* __CPU_LITTLE_ENDIAN__ */
     uint16_t length;
     uint16_t seqno;
 } __packed;

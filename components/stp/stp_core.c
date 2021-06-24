@@ -266,6 +266,7 @@ int stp_output(struct net_buf *buf, unsigned int flags)
     hdr->request = attr->request;
     hdr->require_ack = attr->require_ack;
     hdr->upload = 1;
+    hdr->reserved = 0;
     hdr->version = attr->type & 0xF;
     if (flags & STP_RESP) {
         hdr->seqno = attr->seqno;
@@ -344,11 +345,9 @@ static int stp_init(const struct device *dev_)
             8,
             0,
             K_FOREVER);
-    k_thread_name_set(thr, "STP");
+    k_thread_name_set(thr, "/protocol@stp");
     k_thread_start(thr);
     return 0;
 }
 
-SYS_INIT(stp_init, APPLICATION, 
-    CONFIG_KERNEL_INIT_PRIORITY_DEVICE+5);
-
+SYS_INIT(stp_init, APPLICATION, 55);

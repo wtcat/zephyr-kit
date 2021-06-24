@@ -383,11 +383,11 @@ static struct apollo_adc_data adc_apollo_data_##index = {		\
 	ADC_CONTEXT_INIT_SYNC(adc_apollo_data_##index, ctx),		\
 	.devno = index                                                \
 };									\
-DEVICE_AND_API_INIT(adc_##index, DT_INST_LABEL(index),		\
+DEVICE_DEFINE(adc_##index, DT_INST_LABEL(index),		\
 		    &adc_apollo_init,					\
+            NULL,                   \
 		    &adc_apollo_data_##index, &adc_apollo_cfg_##index,	\
 		    POST_KERNEL, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT,	\
 		    &api_apollo_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(APOLLO_ADC_INIT)
-

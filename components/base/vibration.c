@@ -132,5 +132,5 @@ static int vib_init(const struct device *dev)
     return 0;
 }
 
-SYS_INIT(vib_init, 
-    APPLICATION, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT+10);
+SYS_INIT(vib_init, APPLICATION, 50);
+    

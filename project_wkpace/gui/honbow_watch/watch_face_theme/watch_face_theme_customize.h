@@ -3,7 +3,7 @@
 
 #include "stdint.h"
 #include "stdio.h"
-
+#include "zephyr.h"
 #define WF_THEME_CUSTOM_MAX_CNT 20
 
 struct element_edit_cfg {
@@ -20,9 +20,7 @@ typedef struct wf_mgr_custom_cfg {
 	struct element_edit_cfg element_cfg_nodes[WF_THEME_CUSTOM_MAX_CNT];
 } wf_mgr_custom_cfg_t __aligned(4);
 
-int wft_custom_setting_load(uint32_t theme_sequence_id,
-							wf_mgr_custom_cfg_t *data);
-int wft_custom_setting_save(uint32_t theme_sequence_id,
-							wf_mgr_custom_cfg_t *data);
+int wft_custom_setting_load(uint32_t theme_sequence_id, wf_mgr_custom_cfg_t *data);
+int wft_custom_setting_save(uint32_t theme_sequence_id, wf_mgr_custom_cfg_t *data);
 
 #endif

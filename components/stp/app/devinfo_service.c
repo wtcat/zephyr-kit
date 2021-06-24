@@ -29,6 +29,7 @@ static void devinfo_request_service(const void *buf, size_t size,
     uint8_t mac[6];
     uint16_t len;
 
+    ARG_UNUSED(size);
     dinfo.has_type = true;
     dinfo.type = INFO__DEVICE__TYPE__WATCH;
     dinfo.has_model = true;
@@ -46,7 +47,7 @@ static void devinfo_request_service(const void *buf, size_t size,
     hdr = (struct opc_subhdr *)resp;
     len = info__device__pack(&dinfo, hdr->data);
     hdr->minor = DEV_INFO_REQ;
-    hdr->len = ltons(len);
+    hdr->len = ltons(OPC_DLEN(len));
     net_buf_add_mem(obuf, resp, sizeof(struct opc_subhdr) + len);
 }
 STP_SERVICE(info, OPC_CLASS_INFO, DEV_INFO_REQ, devinfo_request_service);
@@ -59,11 +60,12 @@ static void devinfo_battery_service(const void *buf, size_t size,
     struct opc_subhdr *hdr ;
     uint16_t len;
 
+    ARG_UNUSED(size);
     batinfo.level = 50; //TODO: Read battery power level
     hdr = (struct opc_subhdr *)resp;
     len = info__battery__pack(&batinfo, hdr->data);
     hdr->minor = DEV_INFO_BAT;
-    hdr->len = ltons(len);
+    hdr->len = ltons(OPC_DLEN(len));
     net_buf_add_mem(obuf, resp, sizeof(struct opc_subhdr) + len);
 }
 STP_SERVICE(info, OPC_CLASS_INFO, DEV_INFO_BAT, devinfo_battery_service);

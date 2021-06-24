@@ -1,3 +1,4 @@
+#include <version.h>
 #include <kernel.h>
 #include <init.h>
 #include <net/buf.h>
@@ -14,7 +15,12 @@ LOG_MODULE_REGISTER(stp_bt);
 #include "stp/stp_core.h"
 
 
+#if KERNEL_VERSION_NUMBER < ZEPHYR_VERSION(2,6,0)
 #define CONFIG_STP_BT_RX_BUFSZ  MIN(CONFIG_BT_L2CAP_TX_MTU, CONFIG_BT_L2CAP_RX_MTU) //280
+#else
+#define CONFIG_STP_BT_RX_BUFSZ CONFIG_BT_L2CAP_TX_MTU
+#endif
+
 #define CONFIG_STP_RX_BUFSZ_PRIV 4
 
 /* UUID of the STP Service. **/

@@ -1,4 +1,5 @@
 #include <kernel.h>
+#include <version.h>
 #include <device.h>
 #include <drivers/led.h>
 #include <drivers/pwm.h>
@@ -72,7 +73,15 @@ static const struct led_driver_api motor_pwm_api = {
 	.set_brightness	= motor_pwm_set_duty,
 };
 
-
+#if KERNEL_VERSION_NUMBER < ZEPHYR_VERSION(2,5,99)
+#define MOTOR_PWM_ARGS(nid)	{\
+	.dev		= DEVICE_DT_GET(DT_PHANDLE_BY_IDX(nid, pwms, 0)),	\
+	.channel	= DT_PWMS_CHANNEL(nid),			\
+	.period		= DT_PHA_OR(nid, pwms, period, 100),	\
+	.flags		= DT_PHA_OR(nid, pwms, flags,		\
+				    PWM_POLARITY_NORMAL),		\
+},
+#else
 #define MOTOR_PWM_ARGS(nid)	{\
 	.dev		= DEVICE_DT_GET(DT_PWMS_CTLR(nid)),	\
 	.channel	= DT_PWMS_CHANNEL(nid),			\
@@ -80,6 +89,7 @@ static const struct led_driver_api motor_pwm_api = {
 	.flags		= DT_PHA_OR(nid, pwms, flags,		\
 				    PWM_POLARITY_NORMAL),		\
 },
+#endif /* KERNEL_VERSION_NUMBER */
 
 #define MOTOR_PWM(nid) \
 static const struct motor_pwm motor_pwm_config##nid[] = { \

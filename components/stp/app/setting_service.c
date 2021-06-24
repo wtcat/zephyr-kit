@@ -20,8 +20,8 @@ static void time_update_service(const void *buf, size_t size,
     Setting__Time *time;
 
     hdr->minor = SETTING_UPDATE_TIME;
-    hdr->len = ltons(1);     
-    time = setting__time__unpack(NULL, size, buf);
+    hdr->len = ltons(OPC_SLEN(1));    
+    time = setting__time__unpack(NULL, OPC_LEN(size), buf);
     if (time == NULL) {
         LOG_ERR("%s(): Unpack data failed\n", __func__);
         hdr->data[0] = 0x1;
@@ -47,8 +47,8 @@ static void alarm_set_service(const void *buf, size_t size,
     Setting__Alarm *alarm;
 
     hdr->minor = SETTING_SET_ALARM;
-    hdr->len = ltons(1);        
-    alarm = setting__alarm__unpack(NULL, size, buf);
+    hdr->len = ltons(OPC_SLEN(1));
+    alarm = setting__alarm__unpack(NULL, OPC_LEN(size), buf);
     if (alarm == NULL) {
         LOG_ERR("%s(): Unpack data failed\n", __func__);
         hdr->data[0] = 0x1;

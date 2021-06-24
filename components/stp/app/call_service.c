@@ -33,8 +33,8 @@ static void call_notice_service(const void *buf, size_t size,
     Call__Notice *call;
 
     hdr->minor = CALLING_NOTICE;
-    hdr->len = ltons(1);
-    call = call__notice__unpack(NULL, size, buf);
+    hdr->len = ltons(OPC_SLEN(1));
+    call = call__notice__unpack(NULL, OPC_LEN(size), buf);
     if (call == NULL) {
         LOG_ERR("%s(): Receive calling message failed\n", __func__);
         hdr->data[0] = 0x2;
@@ -65,8 +65,8 @@ static void call_update_service(const void *buf, size_t size,
     Call__CallState *state;
 
     hdr->minor = CALLING_STATE_UPDATE;
-    hdr->len = ltons(1);
-    state = call__call_state__unpack(NULL, size, buf);
+    hdr->len = ltons(OPC_SLEN(1));
+    state = call__call_state__unpack(NULL, OPC_LEN(size), buf);
     if (state == NULL) {
         LOG_ERR("%s(): Receive calling message failed\n", __func__);
         hdr->data[0] = 0x2;

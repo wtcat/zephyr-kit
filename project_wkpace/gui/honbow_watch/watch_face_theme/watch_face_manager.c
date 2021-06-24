@@ -93,8 +93,9 @@ static void watch_face_mgr_default(void)
 	node->partition_id = 0xff;
 	node->theme_ext_or_not = WF_THEME_STORE_IN_INT; // internal
 	memcpy(node->theme_name, head->name, sizeof(node->theme_name));
-	extern GX_CONST GX_PIXELMAP *honbow_disp_theme_1_pixelmap_table[];
-	node->thumb_info = *honbow_disp_theme_1_pixelmap_table[head->wfh_thumb_resource_id];
+
+	// internal theme, no need get thumb info earlier.
+	// node->thumb_info;
 
 	wf_mgr.cnts = 1;
 #endif

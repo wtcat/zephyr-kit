@@ -25,7 +25,7 @@ typedef struct _theme_node {
 	uint8_t partition_id;
 	uint8_t theme_ext_or_not; // theme store in ext flash or not.
 	char reserved[2];
-	GX_PIXELMAP thumb_info; // need preparse partition info [size = 28]
+	GX_PIXELMAP thumb_info; // need preparse partition info [size = 28], if internal theme, it have no use
 } theme_node_t;
 
 typedef struct _watch_face_manager {
@@ -66,7 +66,6 @@ int wf_mgr_theme_add(uint8_t partition_id);
 
 int wf_mgr_theme_remove(uint8_t theme_id);
 
-int wf_mgr_theme_style_edit(uint32_t theme_sequence_id, uint8_t element_id,
-							uint8_t type, uint32_t value);
+int wf_mgr_theme_style_edit(uint32_t theme_sequence_id, uint8_t element_id, uint8_t type, uint32_t value);
 
 #endif

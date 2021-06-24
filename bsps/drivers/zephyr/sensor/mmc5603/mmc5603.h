@@ -42,6 +42,7 @@ struct device;
  */
 struct mmc5603_data {
     const struct device *i2c_master;
+    uint32_t power_state;
 	int sample_x;
 	int sample_y;
 	int sample_z;

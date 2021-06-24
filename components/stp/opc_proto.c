@@ -189,6 +189,7 @@ static int opc_input(struct net_buf *buf)
     struct opc_subhdr *sub;
     struct net_buf *resp_buf;
     uint16_t len;
+    uint16_t dlen;
 
     if (attr->require_ack) {
         resp_buf = opc_alloc_buf(&stp_pool, sizeof(struct opc_hdr));
@@ -201,15 +202,17 @@ static int opc_input(struct net_buf *buf)
     hdr = net_buf_pull_mem(buf, sizeof(struct opc_hdr));
     sub = net_buf_pull_mem(buf, sizeof(struct opc_subhdr));
     len = ntols(sub->len);
-    while (buf->len >= len) {
+    dlen = OPC_LEN(len);
+    while (buf->len >= dlen) {
         uint16_t opcode =   ((uint16_t)hdr->major << 8) | sub->minor;
         handle = opc_find_handle(&root, opcode);
         if (handle)
             handle->action(sub->data, len, resp_buf);
-        sub = net_buf_pull(buf, len);
+        sub = net_buf_pull(buf, dlen);
         if (!buf->len)
             break;
         len = ntols(sub->len);
+        dlen = OPC_LEN(len);
     }
     net_buf_unref(buf);
     if (resp_buf && resp_buf->len) {

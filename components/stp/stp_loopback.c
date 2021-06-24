@@ -84,7 +84,7 @@ static int stp_loopback_setup(const struct stp_driver *drv)
                     &stp_lldev, NULL, NULL,
                     K_PRIO_COOP(CONFIG_STP_RX_PRIO),
                     0, K_FOREVER);
-    k_thread_name_set(rx, "STP_LOOPBACK");
+    k_thread_name_set(rx, "/protocol@stp-loopback");
     k_thread_start(rx);
     return 0;
 }

@@ -39,7 +39,7 @@
 /*  FUNCTION                                               RELEASE        */
 /*                                                                        */
 /*    _gx_system_initialize                               PORTABLE C      */
-/*                                                           6.0.2        */
+/*                                                           6.1.3        */
 /*  AUTHOR                                                                */
 /*                                                                        */
 /*    Kenneth Maxwell, Microsoft Corporation                              */
@@ -76,8 +76,12 @@
 /*    DATE              NAME                      DESCRIPTION             */
 /*                                                                        */
 /*  05-19-2020     Kenneth Maxwell          Initial Version 6.0           */
-/*  08-14-2020     Kenneth Maxwell          Modified comment(s),          */
-/*                                            resulting in version 6.0.2  */
+/*  09-30-2020     Kenneth Maxwell          Modified comment(s),          */
+/*                                            resulting in version 6.1    */
+/*  12-31-2020     Kenneth Maxwell          Modified comment(s),          */
+/*                                            added GX_DISABLE_THREADX_   */
+/*                                            TIMER_SOURCE configuration, */
+/*                                            resulting in version 6.1.3  */
 /*                                                                        */
 /**************************************************************************/
 UINT  _gx_system_initialize(VOID)
@@ -111,6 +115,10 @@ UINT length;
     memset(_gx_system_input_capture_stack, 0, sizeof(GX_WIDGET *) * GX_MAX_INPUT_CAPTURE_NESTING);
     _gx_system_capture_count = 0;
     _gx_system_input_owner = GX_NULL;
+
+    /* initialize rich text context stack. */
+    _gx_system_rich_text_context_stack.gx_rich_text_context_stack_top = 0;
+    _gx_system_rich_text_context_stack_save.gx_rich_text_context_stack_top = 0;
 
     /* initialize the lock count to 0 */
     _gx_system_lock_nesting =                       0;
@@ -244,7 +252,6 @@ UINT length;
     /* First initialize all ThreadX objects to 0.  */
     memset(&_gx_system_event_queue, 0, sizeof(_gx_system_event_queue));
     memset(&_gx_system_protect, 0, sizeof(_gx_system_protect));
-    memset(&_gx_system_timer, 0, sizeof(_gx_system_timer));
 
     /* Check the validity of the GX_EVENT_SIZE constant.  */
     if (GX_EVENT_SIZE < sizeof(GX_EVENT))
@@ -260,9 +267,13 @@ UINT length;
         return(GX_SYSTEM_ERROR);
     }
 
+#ifndef GX_DISABLE_THREADX_TIMER_SOURCE
+    memset(&_gx_system_timer, 0, sizeof(_gx_system_timer));
+
     /* create the ThreadX timer that drives all GUIX timers */
     tx_timer_create(&_gx_system_timer, "guix timer", _gx_system_timer_expiration, 0,
                     GX_SYSTEM_TIMER_TICKS, GX_SYSTEM_TIMER_TICKS, TX_NO_ACTIVATE);
+#endif
 
 #ifdef TX_DISABLE_ERROR_CHECKING
     tx_queue_create(&_gx_system_event_queue, "GUIX System Event Queue", (GX_EVENT_SIZE / sizeof(ULONG)),

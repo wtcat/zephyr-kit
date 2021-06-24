@@ -7,6 +7,9 @@
 #define OBSERVER_CLASS_DEFINE
 #include "gx_api.h"
 
+#include "guix_input_zephyr.h"
+
+
 #define FOREACH_ITEM(_iter, _head) \
 	for (_iter = (_head); _iter != NULL; _iter = _iter->next)
 
@@ -112,7 +115,11 @@ int guix_driver_register(struct guix_driver *drv)
 	return 0;
 }
 
-#include "guix_input_zephyr.h"
+struct guix_driver *guix_get_drv_list(void)
+{
+	return guix_driver_list;
+}
+
 static int guix_initialize(const struct device *dev __unused)
 {
 	struct guix_driver *drv;

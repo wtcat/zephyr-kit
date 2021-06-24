@@ -34,7 +34,7 @@
 /*  FUNCTION                                               RELEASE        */
 /*                                                                        */
 /*    _gx_animation_drag_tracking                         PORTABLE C      */
-/*                                                           6.0          */
+/*                                                           6.1          */
 /*  AUTHOR                                                                */
 /*                                                                        */
 /*    Kenneth Maxwell, Microsoft Corporation                              */
@@ -71,6 +71,8 @@
 /*    DATE              NAME                      DESCRIPTION             */
 /*                                                                        */
 /*  05-19-2020     Kenneth Maxwell          Initial Version 6.0           */
+/*  09-30-2020     Kenneth Maxwell          Modified comment(s),          */
+/*                                            resulting in version 6.1    */
 /*                                                                        */
 /**************************************************************************/
 UINT  _gx_animation_drag_tracking(GX_ANIMATION *animation, GX_POINT penpos)
@@ -251,7 +253,7 @@ GX_VALUE   display_height;
         }
         animation -> gx_animation_slide_tracking_current_pos = pen_pos;
     }
-    
+
     /* Return completion status code. */
     return(GX_SUCCESS);
 }

@@ -158,25 +158,25 @@ int icm42607_sensor_init(const struct device *dev)
 	//2000dps, 16/du
 	inv_spi_read(0x20,&v,1);
 	v &= 0x90;//不更改保留位
-	v |= 0xb;
+	v |= 0xa;
 	inv_spi_single_write(0x20, &v);
 
 	inv_spi_read(0x23,&v,1);
 	v &= 0xF8;//不更改保留位
-	v |= 0x5;	
+	v |= 0x0;	
 	inv_spi_single_write(0x23, &v);
 
 	k_msleep(10);
 
-	//acc 8g,  4096/g
+	//acc 16g,  4096/g
 	inv_spi_read(0x21,&v,1);
 	v &= 0x90;//不更改保留位
-	v |= 0x3b;
+	v |= 0x0a;
 	inv_spi_single_write(0x21, &v);
 
    	inv_spi_read(0x24,&v,1);
 	v &= 0x88;//不更改保留位
-	v |= 0x3b; 
+	v |= 0x30; 
 	inv_spi_single_write(0x24, &v);
 
 	k_msleep(10);

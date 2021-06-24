@@ -12,7 +12,7 @@
 VOID custom_pixelmap_button_draw(GX_PIXELMAP_BUTTON *button)
 {
 	GX_PIXELMAP *map;
-	GX_COLOR fill_color;
+	GX_RESOURCE_ID fill_color;
 	INT xpos;
 	INT ypos;
 
@@ -29,8 +29,7 @@ VOID custom_pixelmap_button_draw(GX_PIXELMAP_BUTTON *button)
 	if (map) {
 		switch (button->gx_widget_style & GX_PIXELMAP_HALIGN_MASK) {
 		case GX_STYLE_HALIGN_CENTER:
-			xpos = button->gx_widget_size.gx_rectangle_right -
-				   button->gx_widget_size.gx_rectangle_left -
+			xpos = button->gx_widget_size.gx_rectangle_right - button->gx_widget_size.gx_rectangle_left -
 				   map->gx_pixelmap_width + 1;
 
 			xpos /= 2;
@@ -38,8 +37,7 @@ VOID custom_pixelmap_button_draw(GX_PIXELMAP_BUTTON *button)
 			break;
 
 		case GX_STYLE_HALIGN_RIGHT:
-			xpos = button->gx_widget_size.gx_rectangle_right -
-				   map->gx_pixelmap_width + 1;
+			xpos = button->gx_widget_size.gx_rectangle_right - map->gx_pixelmap_width + 1;
 			break;
 
 		default:
@@ -49,8 +47,7 @@ VOID custom_pixelmap_button_draw(GX_PIXELMAP_BUTTON *button)
 
 		switch (button->gx_widget_style & GX_PIXELMAP_VALIGN_MASK) {
 		case GX_STYLE_VALIGN_CENTER:
-			ypos = button->gx_widget_size.gx_rectangle_bottom -
-				   button->gx_widget_size.gx_rectangle_top -
+			ypos = button->gx_widget_size.gx_rectangle_bottom - button->gx_widget_size.gx_rectangle_top -
 				   map->gx_pixelmap_height + 1;
 
 			ypos /= 2;
@@ -58,8 +55,7 @@ VOID custom_pixelmap_button_draw(GX_PIXELMAP_BUTTON *button)
 			break;
 
 		case GX_STYLE_VALIGN_BOTTOM:
-			ypos = button->gx_widget_size.gx_rectangle_bottom -
-				   map->gx_pixelmap_height + 1;
+			ypos = button->gx_widget_size.gx_rectangle_bottom - map->gx_pixelmap_height + 1;
 			break;
 
 		default:

@@ -17,7 +17,8 @@
 #include "icm42607_setup.h"
 #include "icm42607_spi.h"
 
-struct k_mutex icm42607_mutex;
+
+static struct k_spinlock icm_spin_lock;
 
 LOG_MODULE_REGISTER(ICM42607, CONFIG_SENSOR_LOG_LEVEL);
 
@@ -81,96 +82,71 @@ static int icm42607_channel_get(const struct device *dev,
 				enum sensor_channel chan,
 				struct sensor_value *val)
 {
-	const struct icm42607_data *drv_data = dev->data;
-
+	struct icm42607_data *drv_data = dev->data;
+	k_spinlock_key_t key;
 	switch (chan) {
 	case SENSOR_CHAN_ACCEL_XYZ:
 
-		if (k_mutex_lock(&(icm42607_mutex), K_FOREVER) == 0) {
-			icm42607_convert_accel(val, drv_data->accel_x,
-				       drv_data->accel_sensitivity_shift);
-			icm42607_convert_accel(val + 1, drv_data->accel_y,
-				       drv_data->accel_sensitivity_shift);
-			icm42607_convert_accel(val + 2, drv_data->accel_z,
-				       drv_data->accel_sensitivity_shift);
-			k_mutex_unlock(&(icm42607_mutex));		
-		}
-		
+		key = k_spin_lock(&icm_spin_lock);		
+		icm42607_convert_accel(val, drv_data->accel_x,
+			drv_data->accel_sensitivity_shift);
+		icm42607_convert_accel(val + 1, drv_data->accel_y,
+			drv_data->accel_sensitivity_shift);
+		icm42607_convert_accel(val + 2, drv_data->accel_z,
+			drv_data->accel_sensitivity_shift);			
+		k_spin_unlock(&icm_spin_lock, key);	
 		break;
 	case SENSOR_CHAN_ACCEL_X:
 
-		if (k_mutex_lock(&(icm42607_mutex), K_FOREVER) == 0) {
-			icm42607_convert_accel(val, drv_data->accel_x,
-				       drv_data->accel_sensitivity_shift);
-			k_mutex_unlock(&(icm42607_mutex));
-		}
-		
+		icm42607_convert_accel(val, drv_data->accel_x,
+			drv_data->accel_sensitivity_shift);
 		break;
-	case SENSOR_CHAN_ACCEL_Y:
+	case SENSOR_CHAN_ACCEL_Y:	
 
-		if (k_mutex_lock(&(icm42607_mutex), K_FOREVER) == 0) {
-			icm42607_convert_accel(val, drv_data->accel_y,
-				       drv_data->accel_sensitivity_shift);
-			k_mutex_unlock(&(icm42607_mutex));
-		}
-		
+		icm42607_convert_accel(val, drv_data->accel_y,
+			drv_data->accel_sensitivity_shift);			
 		break;
 	case SENSOR_CHAN_ACCEL_Z:
 
-		if (k_mutex_lock(&(icm42607_mutex), K_FOREVER) == 0) {
-			icm42607_convert_accel(val, drv_data->accel_z,
-						drv_data->accel_sensitivity_shift);
-			k_mutex_unlock(&(icm42607_mutex));		   
-		}
-		
+		icm42607_convert_accel(val, drv_data->accel_z,
+			drv_data->accel_sensitivity_shift);		
 		break;
 	case SENSOR_CHAN_GYRO_XYZ:
 
-		if (k_mutex_lock(&(icm42607_mutex), K_FOREVER) == 0) {
-			icm42607_convert_gyro(val, drv_data->gyro_x,
-				      drv_data->gyro_sensitivity_x10);
-			icm42607_convert_gyro(val + 1, drv_data->gyro_y,
-						drv_data->gyro_sensitivity_x10);
-			icm42607_convert_gyro(val + 2, drv_data->gyro_z,
-						drv_data->gyro_sensitivity_x10);
-			k_mutex_unlock(&(icm42607_mutex));			
-		}	
-		
+		key = k_spin_lock(&icm_spin_lock);
+		icm42607_convert_gyro(val, drv_data->gyro_x,
+			drv_data->gyro_sensitivity_x10);
+		icm42607_convert_gyro(val + 1, drv_data->gyro_y,
+			drv_data->gyro_sensitivity_x10);
+		icm42607_convert_gyro(val + 2, drv_data->gyro_z,
+			drv_data->gyro_sensitivity_x10);
+		k_spin_unlock(&icm_spin_lock, key);		
 		break;
+	case SENSOR_CHAN_ALL:
+		key = k_spin_lock(&icm_spin_lock);
+		memcpy(val, &(drv_data->acc_fifo), sizeof(ACC_FIFO_T));
+		drv_data->acc_fifo.count = 0;
+		drv_data->acc_fifo.writeP = 0;
+		k_spin_unlock(&icm_spin_lock, key);
+		break;	
 	case SENSOR_CHAN_GYRO_X:
 
-		if (k_mutex_lock(&(icm42607_mutex), K_FOREVER) == 0) {
-			icm42607_convert_gyro(val, drv_data->gyro_x,
-				      drv_data->gyro_sensitivity_x10);
-			k_mutex_unlock(&(icm42607_mutex));
-		}
-		
+		icm42607_convert_gyro(val, drv_data->gyro_x,
+			drv_data->gyro_sensitivity_x10);		
 		break;
 	case SENSOR_CHAN_GYRO_Y:
 
-		if (k_mutex_lock(&(icm42607_mutex), K_FOREVER) == 0) {
-			icm42607_convert_gyro(val, drv_data->gyro_y,
-				      drv_data->gyro_sensitivity_x10);
-			k_mutex_unlock(&(icm42607_mutex));		  
-		}
-		
+		icm42607_convert_gyro(val, drv_data->gyro_y,
+			drv_data->gyro_sensitivity_x10);
 		break;
 	case SENSOR_CHAN_GYRO_Z:
-
-		if (k_mutex_lock(&(icm42607_mutex), K_FOREVER) == 0) {
-			icm42607_convert_gyro(val, drv_data->gyro_z,
-				      drv_data->gyro_sensitivity_x10);
-			k_mutex_unlock(&(icm42607_mutex));	
-		}
 		
+		icm42607_convert_gyro(val, drv_data->gyro_z,
+			drv_data->gyro_sensitivity_x10);		
 		break;
 	case SENSOR_CHAN_DIE_TEMP:
-
-		if (k_mutex_lock(&(icm42607_mutex), K_FOREVER) == 0) {
-			icm42607_convert_temp(val, drv_data->temp);
-			k_mutex_unlock(&(icm42607_mutex));
-		}
 		
+		icm42607_convert_temp(val, drv_data->temp);
 		break;
 	default:
 		return -ENOTSUP;
@@ -223,7 +199,7 @@ static int icm42607_sample_fetch(const struct device *dev,
 	int result = 0;
 	uint16_t fifo_count = 0;
 	struct icm42607_data *drv_data = dev->data;
-
+	k_spinlock_key_t key;
 
 	inv_spi_read(0x3d, drv_data->fifo_data, 2);
 	fifo_count = (drv_data->fifo_data[0] << 8) 
@@ -231,111 +207,34 @@ static int icm42607_sample_fetch(const struct device *dev,
 
 	result = inv_spi_read(0x39, drv_data->fifo_data, 1);
 	if (drv_data->fifo_data[0] & BIT_INT_STATUS_DRDY){
-		uint8_t axis_data[6] = {0};
-		uint8_t gyro_data[6] = {0};
+		uint8_t axis_data[12] = {0};
+		inv_spi_read(0xB,axis_data,12);	
 
-		inv_spi_read(0xB,&axis_data[0],1);
-		inv_spi_read(0xC,&axis_data[1],1);
-		inv_spi_read(0xD,&axis_data[2],1);
-		inv_spi_read(0xE,&axis_data[3],1);
-		inv_spi_read(0xF,&axis_data[4],1);
-		inv_spi_read(0x10,&axis_data[5],1);
-
+		key = k_spin_lock(&icm_spin_lock);	
 		drv_data->accel_x = (axis_data[0] << 8)|axis_data[1];
 		drv_data->accel_y = (axis_data[2] << 8)|axis_data[3];
-		drv_data->accel_z = (axis_data[4] << 8)|axis_data[6];
-
-		inv_spi_read(0x11, gyro_data,6);
-
-		drv_data->gyro_x = (gyro_data[0] << 8)|gyro_data[1];
-		drv_data->gyro_y = (gyro_data[2] << 8)|gyro_data[3];
-		drv_data->gyro_z = (gyro_data[4] << 8)|gyro_data[6];
-
-		LOG_DBG("acc_x : %d, acc_y : %d, acc_y : %d\n", 
-		 	drv_data->accel_x, drv_data->accel_y, drv_data->accel_z);
-	    LOG_DBG("gyro_x : %d, gyro_y : %d, gyro_y : %d\n", 
-		 	drv_data->gyro_x, drv_data->gyro_y, drv_data->gyro_z);
-	}
-
-	
-
-	/* Read INT_STATUS (0x45) and FIFO_COUNTH(0x46), FIFO_COUNTL(0x47) */
-	
-	if (0){
-
-		inv_spi_read(0x3d, drv_data->fifo_data, 2);
-		fifo_count = (drv_data->fifo_data[0] << 8)
-			+ (drv_data->fifo_data[1]);
-
-		result = inv_spi_read(0x3f, drv_data->fifo_data,
-						fifo_count);
-
-		/* FIFO Data structure
-			* Packet 1 : FIFO Header(1), AccelX(2), AccelY(2),
-			*            AccelZ(2), Temperature(1)
-			* Packet 2 : FIFO Header(1), GyroX(2), GyroY(2),
-			*            GyroZ(2), Temperature(1)
-			* Packet 3 : FIFO Header(1), AccelX(2), AccelY(2), AccelZ(2),
-			*            GyroX(2), GyroY(2), GyroZ(2), Temperature(1)
-			*/
-		if (drv_data->fifo_data[0] & BIT_FIFO_HEAD_ACCEL) {
-			/* Check empty values */
-			if (!(drv_data->fifo_data[1] == FIFO_ACCEL0_RESET_VALUE
-					&& drv_data->fifo_data[2] ==
-					FIFO_ACCEL1_RESET_VALUE)) {
-				drv_data->accel_x =
-					(drv_data->fifo_data[1] << 8)
-					+ (drv_data->fifo_data[2]);
-				drv_data->accel_y =
-					(drv_data->fifo_data[3] << 8)
-					+ (drv_data->fifo_data[4]);
-				drv_data->accel_z =
-					(drv_data->fifo_data[5] << 8)
-					+ (drv_data->fifo_data[6]);
-			}
-			if (!(drv_data->fifo_data[0] & BIT_FIFO_HEAD_GYRO)) {
-				drv_data->temp =
-					(int16_t)(drv_data->fifo_data[7]);
-			} else {
-				if (!(drv_data->fifo_data[7] ==
-						FIFO_GYRO0_RESET_VALUE &&
-						drv_data->fifo_data[8] ==
-						FIFO_GYRO1_RESET_VALUE)) {
-					drv_data->gyro_x =
-						(drv_data->fifo_data[7] << 8)
-						+ (drv_data->fifo_data[8]);
-					drv_data->gyro_y =
-						(drv_data->fifo_data[9] << 8)
-						+ (drv_data->fifo_data[10]);
-					drv_data->gyro_z =
-						(drv_data->fifo_data[11] << 8)
-						+ (drv_data->fifo_data[12]);
-				}
-				drv_data->temp =
-					(int16_t)(drv_data->fifo_data[13]);
-			}
-		} else {
-			if (drv_data->fifo_data[0] & BIT_FIFO_HEAD_GYRO) {
-				if (!(drv_data->fifo_data[1] ==
-						FIFO_GYRO0_RESET_VALUE &&
-						drv_data->fifo_data[2] ==
-						FIFO_GYRO1_RESET_VALUE)) {
-					drv_data->gyro_x =
-						(drv_data->fifo_data[1] << 8)
-						+ (drv_data->fifo_data[2]);
-					drv_data->gyro_y =
-						(drv_data->fifo_data[3] << 8)
-						+ (drv_data->fifo_data[4]);
-					drv_data->gyro_z =
-						(drv_data->fifo_data[5] << 8)
-						+ (drv_data->fifo_data[6]);
-				}
-				drv_data->temp =
-					(int16_t)(drv_data->fifo_data[7]);
-			}
+		drv_data->accel_z = (axis_data[4] << 8)|axis_data[5];
+		drv_data->acc_fifo.array[drv_data->acc_fifo.writeP].accel_x = drv_data->accel_x >> 2;
+		drv_data->acc_fifo.array[drv_data->acc_fifo.writeP].accel_y = drv_data->accel_y >> 2;
+		drv_data->acc_fifo.array[drv_data->acc_fifo.writeP].accel_z = drv_data->accel_z >> 2;
+		drv_data->acc_fifo.writeP++;
+		drv_data->acc_fifo.writeP %= MAX_ACC_FIFO_SIZE;
+		drv_data->acc_fifo.count++;
+		if(drv_data->acc_fifo.count >= MAX_ACC_FIFO_SIZE) {
+			drv_data->acc_fifo.count = MAX_ACC_FIFO_SIZE;
 		}
+		drv_data->gyro_x = (axis_data[6] << 8)|axis_data[7];
+		drv_data->gyro_y = (axis_data[8] << 8)|axis_data[9];
+		drv_data->gyro_z = (axis_data[10] << 8)|axis_data[11];	
+			
+		k_spin_unlock(&icm_spin_lock, key);
+		/**
+		printk("acc_x : %d, acc_y : %d, acc_y : %d\n", 
+			drv_data->accel_x, drv_data->accel_y, drv_data->accel_z);
+		printk("gyro_x : %d, gyro_y : %d, gyro_y : %d\n", 
+			drv_data->gyro_x, drv_data->gyro_y, drv_data->gyro_z);	
+		**/	
 	}
-
 	return 0;
 }
 
@@ -504,7 +403,8 @@ static int icm42607_init(const struct device *dev)
 			SPI_TRANSFER_MSB);
 	drv_data->spi_cfg.cs = &drv_data->spi_cs;
 
-	k_mutex_init(&(icm42607_mutex));
+	memset(&drv_data->acc_fifo, 0, sizeof(ACC_FIFO_T));
+
 	icm42607_spi_init(drv_data->spi, &drv_data->spi_cfg);
 	icm42607_data_init(drv_data, cfg);
 	icm42607_sensor_init(dev);
@@ -536,7 +436,7 @@ static const struct sensor_driver_api icm42607_driver_api = {
 		.spi_label = DT_INST_BUS_LABEL(index),			\
 		.spi_addr = DT_INST_REG_ADDR(index),			\
 		.frequency = 1000000,	\
-		.slave = 0x68,			\	
+		.slave = 0x68,			\
 		.int_label = DT_INST_GPIO_LABEL(index, int_gpios),	\
 		.int_pin =  DT_INST_GPIO_PIN(index, int_gpios),			\
 		.int_flags = 0,			\
@@ -580,3 +480,4 @@ static const struct sensor_driver_api icm42607_driver_api = {
 			    &icm42607_driver_api);
 
 DT_INST_FOREACH_STATUS_OKAY(ICM42607_INIT)
+

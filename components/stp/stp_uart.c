@@ -27,7 +27,7 @@ struct stp_uartpriv {
 
 
 #define CONFIG_STP_RX_PRIO 2
-#define CONFIG_STP_UART_RX_TIMEOUT     25 /* 25ms */
+#define CONFIG_STP_UART_RX_TIMEOUT     50 /* 25ms */
 #define CONFIG_STP_UART_RX_BUFSZ       280
 #define CONFIG_STP_UART_RX_BUFSZ_PRIV 4
 
@@ -168,7 +168,7 @@ static int stp_uart_setup(const struct stp_driver *drv)
                     &stp_lldev, NULL, NULL,
                     K_PRIO_COOP(CONFIG_STP_RX_PRIO),
                     0, K_FOREVER);
-    k_thread_name_set(rx, "STP_UART");
+    k_thread_name_set(rx, "/protocol@stp-uart");
     k_thread_start(rx);
 
     fifo_dummy_read(dev);

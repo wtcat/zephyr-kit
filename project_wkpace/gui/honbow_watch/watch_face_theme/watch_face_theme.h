@@ -29,8 +29,14 @@ typedef enum {
 	ELEMENT_TYPE_MONTH,
 	ELEMENT_TYPE_DAY,
 	ELEMENT_TYPE_HOUR,
+	ELEMENT_TYPE_HOUR_TENS,
+	ELEMENT_TYPE_HOUR_UNITS,
 	ELEMENT_TYPE_MIN,
+	ELEMENT_TYPE_MIN_TENS,
+	ELEMENT_TYPE_MIN_UNITS,
 	ELEMENT_TYPE_SEC,
+	ELEMENT_TYPE_SEC_TENS,
+	ELEMENT_TYPE_SEC_UNITS,
 	ELEMENT_TYPE_AM_PM,
 	ELEMENT_TYPE_WEEK_DAY,
 	ELEMENT_TYPE_HEART_RATE,
@@ -40,7 +46,7 @@ typedef enum {
 	ELEMENT_TYPE_WEATHER,
 	ELEMENT_TYPE_TEMP,
 	ELEMENT_TYPE_IMG,
-	ELEMENT_TYPE_MAX = ELEMENT_TYPE_IMG,
+	ELEMENT_TYPE_MAX,
 } element_type_enum;
 
 typedef enum {
@@ -161,8 +167,7 @@ uint8_t wft_element_cnts_get(void);
 element_style_t *wft_element_styles_get(void);
 bool wft_element_refresh_judge(element_style_t *style);
 uint16_t wft_hdr_size_get(void);
-int wft_head_parse(unsigned char *theme_root_addr,
-				   struct watch_face_header *head_parsed);
+int wft_head_parse(unsigned char *theme_root_addr, struct watch_face_header *head_parsed);
 int wft_style_sync(uint8_t element_id, uint8_t type, uint32_t value);
 
 #endif

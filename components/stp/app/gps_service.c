@@ -58,21 +58,21 @@ static void gps_start_notify(const void *buf, size_t size,
     struct net_buf *obuf)
 {
     ARG_UNUSED(obuf);
-    gps_common_service(buf, size, GPS_START, __func__);
+    gps_common_service(buf, OPC_LEN(size), GPS_START, __func__);
 }
 
 static void gps_stop_notify(const void *buf, size_t size,
     struct net_buf *obuf)
 {
     ARG_UNUSED(obuf);
-    gps_common_service(buf, size, GPS_STOP, __func__);
+    gps_common_service(buf, OPC_LEN(size), GPS_STOP, __func__);
 }
 
 static void gps_receive_service(const void *buf, size_t size,
     struct net_buf *obuf)
 {
     Gps__Position *gps;
-    gps = gps__position__unpack(NULL, size, buf);
+    gps = gps__position__unpack(NULL, OPC_LEN(size), buf);
     if (gps == NULL) {
         LOG_ERR("%s(): GPS data receive failed\n", __func__);
         return;

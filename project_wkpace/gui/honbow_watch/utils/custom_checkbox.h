@@ -16,6 +16,7 @@ typedef struct CUSTOM_CHECBOX_STRUCT {
 	INT end_offset;
 	INT cur_offset;
 	USHORT state;
+	GX_BOOL flag_effect_from_external;
 } CUSTOM_CHECKBOX;
 
 typedef struct CUSTOM_CHECKBOX_INFO_STRUCT {
@@ -27,7 +28,8 @@ typedef struct CUSTOM_CHECKBOX_INFO_STRUCT {
 	INT end_offset;
 } CUSTOM_CHECKBOX_INFO;
 
-VOID custom_checkbox_create(CUSTOM_CHECKBOX *button, GX_WIDGET *parent,
-							CUSTOM_CHECKBOX_INFO *info, GX_RECTANGLE *size);
-
+VOID custom_checkbox_create(CUSTOM_CHECKBOX *button, GX_WIDGET *parent, const CUSTOM_CHECKBOX_INFO *info,
+							GX_RECTANGLE *size);
+void custom_checkbox_status_change(CUSTOM_CHECKBOX *checkbox);
+void custom_checkbox_event_from_external_enable(CUSTOM_CHECKBOX *checkbox, GX_BOOL flag);
 #endif

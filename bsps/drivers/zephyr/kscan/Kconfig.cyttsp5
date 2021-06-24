@@ -13,4 +13,10 @@ config KSCAN_CYTTSP5_INTERRUPT
 	help
 	  Enable interrupt support (requires GPIO).
 
+config KSCAN_CYTTSP5_THREAD_PRIO
+	int "CYTTSP5 thread prio"
+	default 3
+	help
+	  Number of sectors used for the NVS settings area
+
 endif # KSCAN_FT5336

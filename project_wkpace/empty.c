@@ -16,11 +16,16 @@
 
 #include "base/vibration.h"
 
+
 #include <logging/log.h>
 LOG_MODULE_REGISTER(test);
 
 #include "services/magnet/magnet_svr.h"
 
+//#define CONFIG_GPIO_GENERATE_PULSE
+//#define CONFIG_BUTTON_TEST
+//#define CONFIG_EVM_TEST
+//#define CONFIG_MAGNET_TEST
 
 #if CONFIG_STP
 static int __unused msg_send_test(int major, int minor, 
@@ -119,11 +124,24 @@ static void keyboard_notify(const struct device *dev, uint32_t row,
 }
 
 #else /* !CONFIG_GPIO_GENERATE_PULSE */
+
+#ifdef CONFIG_BUTTON_TEST
 static void keyboard_notify(const struct device *dev, uint32_t row, 
     uint32_t column, bool pressed)
 {
     printf("Key(%u): %s\n", row, pressed? "Pressed": "Released");
+
+#ifdef CONFIG_EVM_TEST
+    if (pressed) {
+        event_report(EV_BAT_CHARGE,  30, 0, 0);
+        event_report(EV_OTA_UPGRADE, 29, 0, 0);
+        event_report(EV_INCOMING_REMIND, 10, 0, 0);
+    } else {
+        event_sync();
+    }
+#endif
 }
+#endif
 #endif /* CONFIG_GPIO_GENERATE_PULSE */
 
 static void charge_trigger(const struct device *dev,
@@ -155,20 +173,45 @@ static void charge_trigger(const struct device *dev,
     }
 }
 
-__psram_data static char button_device_name[] = {"buttons"};
-__psram_data static char magnet_device_name[] = {"CW6305"};
+#ifdef CONFIG_EVM_TEST
+static void event_process(struct event_struct *e)
+{
+    switch (e->type) {
+    case EV_OTA_UPGRADE:
+        printf("Event process[%d](%d): OTA upgrade\n", e->time, e->prio);
+        break;
+    case EV_BAT_CHARGE:
+        printf("Event process[%d](%d): Battery charge\n", e->time, e->prio);
+        break;
+    case EV_INCOMING_REMIND:
+        printf("Event process[%d](%d): Incoming remind\n", e->time, e->prio);
+        break;
+    default:
+        break;
+    }
+    event_ack(e);
+}
+
+static struct event_notifer kevent = {
+    .notify = event_process
+};
+#endif /* CONFIG_EVM_TEST */
+
+
 int main(void)
 {
-    const struct device *key;
-    const struct device *chg;
-
-    key = device_get_binding(button_device_name);
+#ifdef CONFIG_EVM_TEST
+    event_manager_init();
+    event_notifier_register(&kevent);
+#endif
+#ifdef CONFIG_BUTTON_TEST
+    const struct device *key = device_get_binding("buttons");
     if (key) {
         kscan_config(key, keyboard_notify);
         kscan_enable_callback(key);
     }
-
-    chg = device_get_binding(magnet_device_name);
+#endif
+    const struct device *chg = device_get_binding("CW6305");
     if (chg) 
         sensor_trigger_set(chg, NULL, charge_trigger);
 
@@ -177,20 +220,36 @@ int main(void)
 #endif
 #ifdef CONFIG_MAGNET_TEST
     float data[3], angle[3];
-    if (magnet_service_start())
-        return -EINVAL;
     for (;;) {
-        magnet_get_xyz(&data[0], &data[1], &data[2]);
-        magnet_get_angle(&angle[0], &angle[1], &angle[2]);
-        printf("X:Azimuth(%.4f: %.2f) Y:Pitch(%.4f: %.2f) Z:Roll(%.4f: %.2f)\n", 
-            data[0], angle[0], 
-            data[1], angle[1],
-            data[2], angle[2]);
-        k_msleep(1000);
+        printf("Starting magnetic service...\n");
+        magnet_service_start();
+        for (int i = 0; i < 10; i++) {
+            magnet_get_xyz(&data[0], &data[1], &data[2]);
+            magnet_get_angle(&angle[0], &angle[1], &angle[2]);
+            printf("X:Azimuth(%.4f: %.2f) Y:Pitch(%.4f: %.2f) Z:Roll(%.4f: %.2f)\n", 
+                data[0], angle[0], 
+                data[1], angle[1],
+                data[2], angle[2]);
+            k_msleep(1000);
+        }
+        magnet_service_stop();
+        printf("Stoped magnetic service\n");
+        k_msleep(2000);
     }
+#else
+
+#ifdef CONFIG_EVM_TEST
+    int old_prio;
+    int level = 31;
+    for (;;) {
+        k_sleep(K_MSEC(3000));
+        old_prio = event_disable_level_set(level);
+        printf("Event disable priority level: %d(old: %d)\n", level, old_prio);
+        level--;
+        if (level < 0)
+            level = 32;
+    }
+#endif
 #endif
     return 0;
 }
-
-
-

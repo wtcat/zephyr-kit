@@ -9,13 +9,13 @@ void custom_icon_draw(GX_WIDGET *widget)
 	GX_RECTANGLE fillrect;
 	gx_widget_client_get(widget, 0, &fillrect);
 
-	gx_context_brush_define(GX_COLOR_ID_BLACK, GX_COLOR_ID_BLACK, GX_BRUSH_SOLID_FILL);
+	gx_context_brush_define(GX_COLOR_ID_CANVAS, GX_COLOR_ID_CANVAS, GX_BRUSH_SOLID_FILL);
 	gx_context_brush_width_set(0);
 	gx_canvas_rectangle_draw(&fillrect);
 
 	INT xpos;
 	INT ypos;
-	CC_ICON_T *element = CONTAINER_OF(widget, CC_ICON_T, widget);
+	Custom_Icon_TypeDef *element = CONTAINER_OF(widget, Custom_Icon_TypeDef, widget);
 
 	GX_DRAW_CONTEXT *current_context;
 	gx_system_draw_context_get(&current_context);
@@ -35,7 +35,7 @@ void custom_icon_draw(GX_WIDGET *widget)
 	uint16_t width = abs(widget->gx_widget_size.gx_rectangle_bottom - widget->gx_widget_size.gx_rectangle_top) + 1;
 	gx_context_brush_width_set(width);
 
-	uint16_t temp = (width >> 1) + 1;
+	uint16_t temp = (width >> 1);
 	// draw bg color
 	gx_canvas_line_draw(widget->gx_widget_size.gx_rectangle_left + temp, widget->gx_widget_size.gx_rectangle_top + temp,
 						widget->gx_widget_size.gx_rectangle_right - temp,
@@ -101,7 +101,7 @@ UINT control_center_icon_event(GX_WIDGET *widget, GX_EVENT *event_ptr)
 	}
 	return status;
 }
-void custom_icon_create(CC_ICON_T *element, USHORT widget_id, GX_WIDGET *parent, GX_RECTANGLE *size,
+void custom_icon_create(Custom_Icon_TypeDef *element, USHORT widget_id, GX_WIDGET *parent, GX_RECTANGLE *size,
 						GX_RESOURCE_ID color_id, GX_RESOURCE_ID icon_id)
 {
 	gx_widget_create(&element->widget, GX_NULL, parent, GX_STYLE_BORDER_NONE | GX_STYLE_ENABLED, widget_id, size);
@@ -111,13 +111,13 @@ void custom_icon_create(CC_ICON_T *element, USHORT widget_id, GX_WIDGET *parent,
 	element->icon = icon_id;
 }
 
-void custom_icon_change_bg_color(CC_ICON_T *element, GX_RESOURCE_ID curr_color)
+void custom_icon_change_bg_color(Custom_Icon_TypeDef *element, GX_RESOURCE_ID curr_color)
 {
 	element->bg_color = curr_color;
 	gx_system_dirty_mark(&element->widget);
 }
 
-void custom_icon_change_pixelmap(CC_ICON_T *element, GX_RESOURCE_ID map_id)
+void custom_icon_change_pixelmap(Custom_Icon_TypeDef *element, GX_RESOURCE_ID map_id)
 {
 	element->icon = map_id;
 	gx_system_dirty_mark(&element->widget);

@@ -10,6 +10,13 @@ if GUIX
   rsource "gui/Kconfig"
 endif
 
+menuconfig XMODEM
+	bool "xmodem"
+	default y
+	help
+	  Enable options for xmodem
+
 rsource "stp/Kconfig"
 rsource "protobuf-c/Kconfig"
 rsource "services/Kconfig"
+rsource "motion/Kconfig"

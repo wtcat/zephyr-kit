@@ -6,10 +6,12 @@ zephyr_sources(
   observer.c
   timeconv.c
   mac_addr.c
-  schedule_service.c
-  blkio.c
   vibration.c
   env.c
+  u_thread.c
+  evmgr.c
+  ev_guix.c
+  ev_shell.c
 )
 
 

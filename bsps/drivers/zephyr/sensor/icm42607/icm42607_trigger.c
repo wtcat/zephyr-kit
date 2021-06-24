@@ -108,11 +108,12 @@ static void icm42607_thread(int dev_ptr, int unused)
 		icm42607_thread_cb(dev);
 	}
 }
-
+#define CONFIG_ICM42607_THREAD_PRIORITY 10
 int icm42607_init_interrupt(const struct device *dev)
 {
 	struct icm42607_data *drv_data = dev->data;
 	const struct icm42607_config *cfg = dev->config;
+	k_tid_t thr;
 	int result = 0;
 
 	/* setup data ready gpio interrupt */
@@ -138,14 +139,13 @@ int icm42607_init_interrupt(const struct device *dev)
 		return result;
 	}
 
-	k_sem_init(&drv_data->gpio_sem, 0, K_SEM_MAX_LIMIT);
-
-	k_thread_create(&drv_data->thread, drv_data->thread_stack,
+	k_sem_init(&drv_data->gpio_sem, 0, UINT_MAX);
+	thr = k_thread_create(&drv_data->thread, drv_data->thread_stack,
 			CONFIG_ICM42607_THREAD_STACK_SIZE,
-			(k_thread_entry_t)icm42607_thread, dev,
+			(k_thread_entry_t)icm42607_thread, (void *)dev,
 			0, NULL, K_PRIO_COOP(CONFIG_ICM42607_THREAD_PRIORITY),
 			0, K_NO_WAIT);
-
+	k_thread_name_set(thr, "/sensor@accel");
 	gpio_pin_interrupt_configure(drv_data->gpio, cfg->int_pin,
 				     GPIO_INT_EDGE_TO_INACTIVE);
 

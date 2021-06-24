@@ -1,8 +1,14 @@
 
 #include <zephyr.h>
-#include <power/power.h>
+#include <version.h>
 #include <soc.h>
 #include <init.h>
+
+#if (KERNEL_VERSION_NUMBER >= ZEPHYR_VERSION(2,6,0))
+#include <pm/pm.h>
+#else
+#include <power/power.h>
+#endif
 
 #include <logging/log.h>
 LOG_MODULE_REGISTER(soc);
